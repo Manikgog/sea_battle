@@ -16,7 +16,11 @@ qt_add_qml_module(appsea_battle
     URI sea_battle
     VERSION 1.0
     QML_FILES
-        Main.qml
+    main.qml
+        SOURCES cell.hpp
+        SOURCES ship.hpp
+        SOURCES model.hpp
+        SOURCES model.cpp
 )
 
 # Qt for iOS sets MACOSX_BUNDLE_GUI_IDENTIFIER automatically since Qt 6.1.
@@ -40,3 +44,4 @@ install(TARGETS appsea_battle
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
 )
+add_subdirectory(Test)
