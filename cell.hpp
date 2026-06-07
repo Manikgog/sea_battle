@@ -16,6 +16,7 @@ struct Cell {
     Point   _position;
     bool    _isShoted   = false;
     bool    _isOccupied = false;
+    bool    _isAllowed = true;
 };
 
 #endif // CELL_HPP

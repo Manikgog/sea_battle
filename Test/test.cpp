@@ -1,4 +1,5 @@
 #include <QtTest>
+#include <QDebug>
 
 #include "../model.hpp"
 
@@ -12,6 +13,8 @@ public:
 
 private slots:
     void test_getPoint();
+    void test_getRandomNumber();
+    void test_placingLeft();
 };
 
 Test::Test() {
@@ -53,6 +56,53 @@ void Test::test_getPoint() {
         //          << "-> Got:" << p._y << p._x;
     }
 }
+
+
+/**
+* @brief Test::test_getRandomNumber метод для проверки, что метод getRandomNumber генерирует все числа от начального до конечного включительно
+*/
+void Test::test_getRandomNumber() {
+    Model model;
+
+    std::vector<int> results;
+    for(int i = 1; i <= 5; ++i) {
+        results.push_back(i);
+    }
+
+    while(!results.empty()) {
+        int number = model.getRandomNumber(1, 5);
+        auto it = std::find(results.begin(), results.end(), number);
+        if(it != results.end()) {
+            results.erase(it);
+        }
+    }
+    QCOMPARE(results.empty(), true);
+}
+
+void Test::test_placingLeft() {
+    Model model;
+    int row = 1;
+    int column = 4;
+    int cells = 5;
+    bool result_placing = model.placingLeft(row, column, cells);
+    QCOMPARE(result_placing, true);
+    std::vector<Cell> playingField = model.getPlayingField();
+    for(int i = 0; i < 6; ++i) {
+        QCOMPARE(playingField[i]._isAllowed, false);
+    }
+    for(int i = 10; i < 15; ++i) {
+        QCOMPARE(playingField[i]._isOccupied, true);
+    }
+    QCOMPARE(playingField[15]._isAllowed, false);
+    for(int i = 20; i < 26; ++i) {
+        QCOMPARE(playingField[i]._isAllowed, false);
+    }
+
+    result_placing = model.placingLeft(row, column + 5, cells);
+    QCOMPARE(result_placing, false);
+}
+
+
 
 QTEST_APPLESS_MAIN(Test)
 

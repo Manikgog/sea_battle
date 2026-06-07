@@ -21,6 +21,7 @@ qt_add_qml_module(appsea_battle
         SOURCES ship.hpp
         SOURCES model.hpp
         SOURCES model.cpp
+        SOURCES utils.hpp
 )
 
 # Qt for iOS sets MACOSX_BUNDLE_GUI_IDENTIFIER automatically since Qt 6.1.

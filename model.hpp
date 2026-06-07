@@ -4,6 +4,13 @@
 #include <vector>
 #include "ship.hpp"
 
+enum Side {
+    left
+    , right
+    , up
+    , down
+};
+
 
 class Model {
 
@@ -13,10 +20,19 @@ public:
     bool automaticShipsPlacing();
 
     Point getPoint(int number);
+    bool isCellFree(int row, int column);
+    int getRandomNumber(int start_number, int end_number);
+    std::vector<Cell> getPlayingField();
+    bool automaticPlacingShip(int cells);
+    bool placingLeft(int row, int column, int cells);
+    bool placingRight(int row, int column, int cells);
+    bool placingUp(int row, int column, int cells);
+    bool placingDown(int row, int column, int cells);
+
 private:
 
-    int getRandomNumber(int start_number, int end_number);
-    bool automaticPlacingShip(int cells);
+
+    void markNotAllowedPlacingPoint(int column, int row, Side side, int cells);
 
     int _rows = 10;
     int _columns = 10;
