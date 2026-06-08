@@ -28,11 +28,13 @@ public:
     bool placingRight(int row, int column, int cells);
     bool placingUp(int row, int column, int cells);
     bool placingDown(int row, int column, int cells);
+    const std::vector<Ship> getShips();
 
 private:
 
 
     void markNotAllowedPlacingPoint(int column, int row, Side side, int cells);
+    void addShip(int row, int column, Side side, int cells);
 
     int _rows = 10;
     int _columns = 10;

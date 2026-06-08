@@ -74,7 +74,6 @@ bool Model::placingLeft(int row, int column, int cells) {
         // далее определяем не заняты ли уже эти позиции слева
         for(int i = column; i > column - cells; i--) {
             if(!isCellFree(row, i)) {
-                qDebug() << "false false false false false false false ";
                 ok = false;
                 break;
             }
@@ -91,6 +90,7 @@ bool Model::placingLeft(int row, int column, int cells) {
                 _playingField[index]._position = getPoint(index + 1);
             }
             markNotAllowedPlacingPoint(column, row, Side::left, cells);
+            addShip(row, column, Side::left, cells);
             return true;
         }
     }
@@ -127,6 +127,7 @@ bool Model::placingRight(int row, int column, int cells) {
                 _playingField[index]._position = getPoint(index + 1);
             }
             markNotAllowedPlacingPoint(column, row, Side::right, cells);
+            addShip(row, column, Side::right, cells);
             return true;
         }
     }
@@ -143,7 +144,7 @@ bool Model::placingRight(int row, int column, int cells) {
 bool Model::placingUp(int row, int column, int cells) {
     bool ok = true;
     // пробуем разместить корабль вверх от найденной позиции
-    if(row + cells - 1 >= 0) {
+    if(row - cells + 1 >= 0) {
         // далее определяем не заняты ли уже эти позиции вверху
         for(int i = row; i > row - cells; i--) {
             if(!isCellFree(i, column)) {
@@ -153,7 +154,7 @@ bool Model::placingUp(int row, int column, int cells) {
         }
         if(ok) {
             for(int i = row; i > row - cells; i--) {
-                int index = row * 10 + i;
+                int index = i * _rows + column;
                 if(index < 0 || index >= _playingField.size()) {
                     qDebug() << "index " << index << " выходит за пределы поля при попытке размещения вверх";
                     return false;
@@ -163,6 +164,7 @@ bool Model::placingUp(int row, int column, int cells) {
                 _playingField[index]._position = getPoint(index + 1);
             }
             markNotAllowedPlacingPoint(column, row, Side::up, cells);
+            addShip(row, column, Side::up, cells);
             return true;
         }
     }
@@ -190,7 +192,7 @@ bool Model::placingDown(int row, int column, int cells) {
         }
         if(ok) {
             for(int i = row; i < row + cells; i++) {
-                int index = row * 10 + i;
+                int index = i * _rows + column;
                 if(index < 0 || index >= _playingField.size()) {
                     qDebug() << "index " << index << " выходит за пределы поля при попытке размещения вниз";
                     return false;
@@ -200,10 +202,17 @@ bool Model::placingDown(int row, int column, int cells) {
                 _playingField[index]._position = getPoint(index + 1);
             }
             markNotAllowedPlacingPoint(column, row, Side::down, cells);
+            addShip(row, column, Side::down, cells);
             return true;
         }
     }
     return false;
+}
+
+
+
+const std::vector<Ship> Model::getShips() {
+    return _ships;
 }
 
 
@@ -377,6 +386,51 @@ void Model::markNotAllowedPlacingPoint(int column, int row, Side side, int cells
 
 
 
+void Model::addShip(int row, int column, Side side, int cells) {
+    int index = row * 10 + column;
+    std::vector<Cell*> cells_;
+    if(side == Side::left) {
+        for(int i = index; i > index - cells; --i) {
+            if(i < 0 || i >= _playingField.size()) {
+                qDebug() << __FUNCTION__ << "индекс " << i << " вышел за границы массива.";
+                return;
+            }
+            cells_.push_back(&_playingField[i]);
+        }
+    } else if(side == Side::right) {
+        for(int i = index; i < index + cells; ++i) {
+            if(i < 0 || i >= _playingField.size()) {
+                qDebug() << __FUNCTION__ << "индекс " << i << " вышел за границы массива.";
+                return;
+            }
+            cells_.push_back(&_playingField[i]);
+        }
+    } else if(side == Side::up) {
+        int last_index = (row - cells) * 10 + column;
+        for(int i = index; i > last_index; i-=_columns) {
+            if(i < 0 || i >= _playingField.size()) {
+                qDebug() << __FUNCTION__ << "индекс " << i << " вышел за границы массива.";
+                return;
+            }
+            cells_.push_back(&_playingField[i]);
+        }
+    } else if(side == Side::down) {
+        int last_index = (row + cells) * 10 + column;
+        for(int i = index; i < last_index; i+=_columns) {
+            if(i < 0 || i >= _playingField.size()) {
+                qDebug() << __FUNCTION__ << "индекс " << i << " вышел за границы массива.";
+                return;
+            }
+            cells_.push_back(&_playingField[i]);
+        }
+    }
+    Ship ship(cells_);
+    _ships.push_back(ship);
+}
+
+
+
+
 /**
  * @brief Model::automaticPlacingShip метод для автоматического размещения корабля
  * @param cells - количество палуб корабля
@@ -387,6 +441,11 @@ bool Model::automaticPlacingShip(int cells) {
         int position = getRandomNumber(0, 99);
         int row = position / 10;
         int column = position % 10;
+        while(!isCellFree(row, column)) {
+            position = getRandomNumber(0, 99);
+            row = position / 10;
+            column = position % 10;
+        }
         bool ok = true;
         std::vector<Side> sides{Side::left, Side::right, Side::up, Side::down};
         shuffleVector(sides);
@@ -447,8 +506,8 @@ Point Model::getPoint(int number) {
     int row = index / _rows;      // колонка 0-9
 
     // Проверяем границы массива x_arr
-    if (row >= 0 && row < x_arr.size()) {
-        p._y = x_arr[row];
+    if (row >= 0 && row < y_arr.size()) {
+        p._y = y_arr[row];
     } else {
         p._y = "?";
         qDebug() << "Error: row index out of range:" << row;

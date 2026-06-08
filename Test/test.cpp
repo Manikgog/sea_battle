@@ -15,6 +15,9 @@ private slots:
     void test_getPoint();
     void test_getRandomNumber();
     void test_placingLeft();
+    void test_placingRight();
+    void test_placingUp();
+    void test_placingDown();
 };
 
 Test::Test() {
@@ -79,6 +82,10 @@ void Test::test_getRandomNumber() {
     QCOMPARE(results.empty(), true);
 }
 
+
+/**
+ * @brief Test::test_placingLeft тестирование метода placingLeft
+ */
 void Test::test_placingLeft() {
     Model model;
     int row = 1;
@@ -100,6 +107,174 @@ void Test::test_placingLeft() {
 
     result_placing = model.placingLeft(row, column + 5, cells);
     QCOMPARE(result_placing, false);
+
+    std::vector<Ship> ships = model.getShips();
+    QCOMPARE(ships.size(), 1);
+
+    QCOMPARE(ships[0].getCells().size(), 5);
+
+    playingField = model.getPlayingField();
+    int count_cells = 0;                            // общее количество палуб на поле
+    for(int i = 0; i < playingField.size(); ++i) {
+        if(playingField[i]._isOccupied) {
+            count_cells++;
+        }
+    }
+    QCOMPARE(count_cells, 5);
+}
+
+
+
+/**
+ * @brief Test::test_placingRight тестирование метода placingRight
+ */
+void Test::test_placingRight()
+{
+    Model model;
+    int row = 1;
+    int column = 5;
+    int cells = 5;
+    bool result_placing = model.placingRight(row, column, cells);
+    QCOMPARE(result_placing, true);
+    std::vector<Cell> playingField = model.getPlayingField();
+    for(int i = 4; i <= 9; ++i) {
+        QCOMPARE(playingField[i]._isAllowed, false);
+    }
+    for(int i = 15; i <= 19; ++i) {
+        QCOMPARE(playingField[i]._isOccupied, true);
+    }
+    QCOMPARE(playingField[14]._isAllowed, false);
+    for(int i = 24; i <= 29; ++i) {
+        QCOMPARE(playingField[i]._isAllowed, false);
+    }
+
+    row = 1;
+    column = 0;
+    result_placing = model.placingRight(row, column, cells);
+    QCOMPARE(result_placing, false);
+
+    row = 2;
+    column = 0;
+    result_placing = model.placingRight(row, column, cells);
+    QCOMPARE(result_placing, false);
+
+    std::vector<Ship> ships = model.getShips();
+    QCOMPARE(ships.size(), 1);
+
+    QCOMPARE(ships[0].getCells().size(), 5);
+
+    playingField = model.getPlayingField();
+    int count_cells = 0;                            // общее количество палуб на поле
+    for(int i = 0; i < playingField.size(); ++i) {
+        if(playingField[i]._isOccupied) {
+            count_cells++;
+        }
+    }
+    QCOMPARE(count_cells, 5);
+}
+
+
+
+
+void Test::test_placingUp()
+{
+    Model model;
+    int row = 5;
+    int column = 1;
+    int cells = 5;
+    bool result_placing = model.placingUp(row, column, cells);
+    QCOMPARE(result_placing, true);
+
+    std::vector<Cell> playingField = model.getPlayingField();
+
+    int first_index = (row - cells + 1) * 10 + column;
+    int last_index = (row + 1) * 10 + column;
+    for(int i = first_index; i < last_index; i+=10) {
+        QCOMPARE(playingField[i]._isOccupied, true);
+    }
+
+    row = 4;
+    column = 2;
+    result_placing = model.placingUp(row, column, cells);
+    QCOMPARE(result_placing, false);
+
+    row = 9;
+    column = 1;
+    result_placing = model.placingUp(row, column, cells);
+    QCOMPARE(result_placing, false);
+
+    column = 0;
+    result_placing = model.placingUp(row, column, cells);
+    QCOMPARE(result_placing, false);
+
+    std::vector<Ship> ships = model.getShips();
+    QCOMPARE(ships.size(), 1);
+
+    QCOMPARE(ships[0].getCells().size(), 5);
+
+    int count_cells = 0;                            // общее количество палуб на поле
+    for(int i = 0; i < playingField.size(); ++i) {
+        if(playingField[i]._isOccupied) {
+            count_cells++;
+        }
+    }
+    QCOMPARE(count_cells, 5);
+
+    int count_not_allowed = 0;                      // общее количество клеток где нельзя размещать палубу корабля
+    for(int i = 0; i < playingField.size(); ++i) {
+        if(playingField[i]._isAllowed == false) {
+            count_not_allowed++;
+        }
+    }
+    qDebug() << "count_not_allowed =" << count_not_allowed;
+    QCOMPARE(count_not_allowed, 16);
+}
+
+
+
+void Test::test_placingDown()
+{
+    Model model;
+    int row = 5;
+    int column = 1;
+    int cells = 5;
+    bool result_placing = model.placingDown(row, column, cells);
+    QCOMPARE(result_placing, true);
+
+    std::vector<Cell> playingField = model.getPlayingField();
+
+    for(int i = 0; i < playingField.size(); ++i) {
+        if(playingField[i]._isOccupied) {
+            qDebug() << "index =" << i;
+            qDebug() << playingField[i]._position._y << playingField[i]._position._x;
+        }
+    }
+
+    row = 0;
+    result_placing = model.placingDown(row, column, cells);
+    QCOMPARE(result_placing, false);
+
+    row = 1;
+    result_placing = model.placingDown(row, column, cells);
+    QCOMPARE(result_placing, false);
+
+    row = 6;
+    column = 3;
+    result_placing = model.placingDown(row, column, cells);
+    QCOMPARE(result_placing, false);
+
+    std::vector<Ship> ships = model.getShips();
+    QCOMPARE(ships.size(), 1);
+
+    QCOMPARE(ships[0].getCells().size(), 5);
+
+    int count_cells = 0;                            // общее количество палуб на поле
+    for(int i = 0; i < playingField.size(); ++i) {
+        if(playingField[i]._isOccupied) {
+            count_cells++;
+        }
+    }
+    QCOMPARE(count_cells, 5);
 }
 
 

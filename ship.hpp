@@ -19,6 +19,10 @@ struct Ship {
         return true;
     }
 
+    const std::vector<Cell*> getCells() {
+        return _cells;
+    }
+
 private:
     const std::vector<Cell*> _cells;
 };
