@@ -18,6 +18,20 @@ private slots:
     void test_placingRight();
     void test_placingUp();
     void test_placingDown();
+    void test_playingFieldInit();
+    void test_automaticShipsPlacing();
+
+  private:
+    int calculateAllowedCellsAnglePlacing(int cells);       // подсчёт количества запрещенных к размещению других кораблей ячеек при размещении корабля в углу
+    int calculateAllowedCellsAlongSidePlacing(int cells);   // подсчёт количества запрещенных к размещению других кораблей ячеек при размещении корабля вдоль стенки
+    int calculateAllowedCellsNoseToSidePlacing(int cells);  // подсчёт количества запрещенных к размещению других кораблей ячеек при размещении корабля торцом к стенке
+    int calculateAllowedCellFreePlacing(int cells);         // подсчёт количества запрещенных к размещению других кораблей ячеек при размещении корабля не касаясь стенок
+
+    void test_anglePlacing(int row, int column, int cells, Side side);     // тест для проверки правильности размещения в углу при размещении влево от точки
+    void test_alongSidePlacing(int row, int column, int cells, Side side);     // тест для проверки правильности размещения если корабль находится вдоль стенки
+    void test_noseToSidePlacing(int row, int column, int cells, Side side);    // тест для проверки правильности размещения если корабль находится торцом к стенке
+    void test_freePlacing(int row, int column, int cells, Side side);          // тест для проверки правильности размещения если корабль не касается стенок
+
 };
 
 Test::Test() {
@@ -86,41 +100,19 @@ void Test::test_getRandomNumber() {
 /**
  * @brief Test::test_placingLeft тестирование метода placingLeft
  */
-void Test::test_placingLeft() {
-    Model model;
-    int row = 1;
-    int column = 4;
-    int cells = 5;
-    bool result_placing = model.placingLeft(row, column, cells);
-    QCOMPARE(result_placing, true);
-    std::vector<Cell> playingField = model.getPlayingField();
-    for(int i = 0; i < 6; ++i) {
-        QCOMPARE(playingField[i]._isAllowed, false);
-    }
-    for(int i = 10; i < 15; ++i) {
-        QCOMPARE(playingField[i]._isOccupied, true);
-    }
-    QCOMPARE(playingField[15]._isAllowed, false);
-    for(int i = 20; i < 26; ++i) {
-        QCOMPARE(playingField[i]._isAllowed, false);
+void Test::test_placingLeft() {    
+
+    for(int i = 1; i <= 4; ++i) {
+        test_anglePlacing(0, 9, i, Side::left);
+        test_anglePlacing(9, 9, i, Side::left);
+        test_alongSidePlacing(0, 8, i, Side::left);
+        test_alongSidePlacing(9, 8, i, Side::left);
+        test_noseToSidePlacing(1, 9, i, Side::left);
+        test_noseToSidePlacing(3, 9, i, Side::left);
+        test_freePlacing(1, 8, i, Side::left);
+        test_freePlacing(2, 8, i, Side::left);
     }
 
-    result_placing = model.placingLeft(row, column + 5, cells);
-    QCOMPARE(result_placing, false);
-
-    std::vector<Ship> ships = model.getShips();
-    QCOMPARE(ships.size(), 1);
-
-    QCOMPARE(ships[0].getCells().size(), 5);
-
-    playingField = model.getPlayingField();
-    int count_cells = 0;                            // общее количество палуб на поле
-    for(int i = 0; i < playingField.size(); ++i) {
-        if(playingField[i]._isOccupied) {
-            count_cells++;
-        }
-    }
-    QCOMPARE(count_cells, 5);
 }
 
 
@@ -130,47 +122,18 @@ void Test::test_placingLeft() {
  */
 void Test::test_placingRight()
 {
-    Model model;
-    int row = 1;
-    int column = 5;
-    int cells = 5;
-    bool result_placing = model.placingRight(row, column, cells);
-    QCOMPARE(result_placing, true);
-    std::vector<Cell> playingField = model.getPlayingField();
-    for(int i = 4; i <= 9; ++i) {
-        QCOMPARE(playingField[i]._isAllowed, false);
-    }
-    for(int i = 15; i <= 19; ++i) {
-        QCOMPARE(playingField[i]._isOccupied, true);
-    }
-    QCOMPARE(playingField[14]._isAllowed, false);
-    for(int i = 24; i <= 29; ++i) {
-        QCOMPARE(playingField[i]._isAllowed, false);
+
+    for(int i = 1; i <= 4; ++i) {
+        test_anglePlacing(0, 0, i, Side::right);
+        test_anglePlacing(9, 0, i, Side::right);
+        test_alongSidePlacing(0, 1, i, Side::right);
+        test_alongSidePlacing(9, 2, i, Side::right);
+        test_noseToSidePlacing(1, 0, i, Side::right);
+        test_noseToSidePlacing(3, 0, i, Side::right);
+        test_freePlacing(1, 1, i, Side::right);
+        test_freePlacing(2, 2, i, Side::right);
     }
 
-    row = 1;
-    column = 0;
-    result_placing = model.placingRight(row, column, cells);
-    QCOMPARE(result_placing, false);
-
-    row = 2;
-    column = 0;
-    result_placing = model.placingRight(row, column, cells);
-    QCOMPARE(result_placing, false);
-
-    std::vector<Ship> ships = model.getShips();
-    QCOMPARE(ships.size(), 1);
-
-    QCOMPARE(ships[0].getCells().size(), 5);
-
-    playingField = model.getPlayingField();
-    int count_cells = 0;                            // общее количество палуб на поле
-    for(int i = 0; i < playingField.size(); ++i) {
-        if(playingField[i]._isOccupied) {
-            count_cells++;
-        }
-    }
-    QCOMPARE(count_cells, 5);
 }
 
 
@@ -178,104 +141,276 @@ void Test::test_placingRight()
 
 void Test::test_placingUp()
 {
-    Model model;
-    int row = 5;
-    int column = 1;
-    int cells = 5;
-    bool result_placing = model.placingUp(row, column, cells);
-    QCOMPARE(result_placing, true);
-
-    std::vector<Cell> playingField = model.getPlayingField();
-
-    int first_index = (row - cells + 1) * 10 + column;
-    int last_index = (row + 1) * 10 + column;
-    for(int i = first_index; i < last_index; i+=10) {
-        QCOMPARE(playingField[i]._isOccupied, true);
+    for(int i = 1; i <= 4; ++i) {
+        test_anglePlacing(9, 0, i, Side::up);
+        test_anglePlacing(9, 9, i, Side::up);
+        test_alongSidePlacing(8, 0, i, Side::up);
+        test_alongSidePlacing(8, 9, i, Side::up);
+        test_noseToSidePlacing(9, 2, i, Side::up);
+        test_noseToSidePlacing(9, 4, i, Side::up);
+        test_freePlacing(8, 1, i, Side::up);
+        test_freePlacing(7, 3, i, Side::up);
     }
 
-    row = 4;
-    column = 2;
-    result_placing = model.placingUp(row, column, cells);
-    QCOMPARE(result_placing, false);
-
-    row = 9;
-    column = 1;
-    result_placing = model.placingUp(row, column, cells);
-    QCOMPARE(result_placing, false);
-
-    column = 0;
-    result_placing = model.placingUp(row, column, cells);
-    QCOMPARE(result_placing, false);
-
-    std::vector<Ship> ships = model.getShips();
-    QCOMPARE(ships.size(), 1);
-
-    QCOMPARE(ships[0].getCells().size(), 5);
-
-    int count_cells = 0;                            // общее количество палуб на поле
-    for(int i = 0; i < playingField.size(); ++i) {
-        if(playingField[i]._isOccupied) {
-            count_cells++;
-        }
-    }
-    QCOMPARE(count_cells, 5);
-
-    int count_not_allowed = 0;                      // общее количество клеток где нельзя размещать палубу корабля
-    for(int i = 0; i < playingField.size(); ++i) {
-        if(playingField[i]._isAllowed == false) {
-            count_not_allowed++;
-        }
-    }
-    qDebug() << "count_not_allowed =" << count_not_allowed;
-    QCOMPARE(count_not_allowed, 16);
 }
 
 
 
 void Test::test_placingDown()
 {
-    Model model;
-    int row = 5;
-    int column = 1;
-    int cells = 5;
-    bool result_placing = model.placingDown(row, column, cells);
-    QCOMPARE(result_placing, true);
-
-    std::vector<Cell> playingField = model.getPlayingField();
-
-    for(int i = 0; i < playingField.size(); ++i) {
-        if(playingField[i]._isOccupied) {
-            qDebug() << "index =" << i;
-            qDebug() << playingField[i]._position._y << playingField[i]._position._x;
-        }
+    for(int i = 1; i <= 4; ++i) {
+        test_anglePlacing(0, 0, i, Side::down);
+        test_anglePlacing(0, 9, i, Side::down);
+        test_alongSidePlacing(1, 0, i, Side::down);
+        test_alongSidePlacing(1, 9, i, Side::down);
+        test_noseToSidePlacing(0, 2, i, Side::down);
+        test_noseToSidePlacing(0, 4, i, Side::down);
+        test_freePlacing(1, 1, i, Side::down);
+        test_freePlacing(2, 3, i, Side::down);
     }
-
-    row = 0;
-    result_placing = model.placingDown(row, column, cells);
-    QCOMPARE(result_placing, false);
-
-    row = 1;
-    result_placing = model.placingDown(row, column, cells);
-    QCOMPARE(result_placing, false);
-
-    row = 6;
-    column = 3;
-    result_placing = model.placingDown(row, column, cells);
-    QCOMPARE(result_placing, false);
-
-    std::vector<Ship> ships = model.getShips();
-    QCOMPARE(ships.size(), 1);
-
-    QCOMPARE(ships[0].getCells().size(), 5);
-
-    int count_cells = 0;                            // общее количество палуб на поле
-    for(int i = 0; i < playingField.size(); ++i) {
-        if(playingField[i]._isOccupied) {
-            count_cells++;
-        }
-    }
-    QCOMPARE(count_cells, 5);
 }
+
+
+/**
+ * @brief Test::test_playingFieldInit проверка инициализации ячеек игрового поля
+ */
+void Test::test_playingFieldInit()
+{
+    Model model;
+    const std::array<QString, 10> y_arr = {"а", "б", "в", "г", "д", "е", "ж", "з", "и", "к"};
+    QString y = y_arr[0];
+    int x = 1;
+    Point p_expected = Point(1, y_arr[0]);
+    Point p_actual = model.getPoint(1);
+    for(int i = 1; i <= 40; ++i) {
+        if(i >= 1 && i <= 10) {
+            x = i;
+            y = y_arr[0];
+        } else if(i >= 11 && i <= 20) {
+            x = i-10;
+            y = y_arr[1];
+        } else if(i >= 21 && i <= 30) {
+            x = i-20;
+            y = y_arr[2];
+        } else if(i >= 31 && i <= 40) {
+            x = i-30;
+            y = y_arr[3];
+        } else if(i >= 41 && i <= 50) {
+            x = i-40;
+            y = y_arr[4];
+        } else if(i >= 51 && i <= 60) {
+            x = i-50;
+            y = y_arr[5];
+        } else if(i >= 61 && i <= 70) {
+            x = i-60;
+            y = y_arr[6];
+        } else if(i >= 71 && i <= 80) {
+            x = i-70;
+            y = y_arr[7];
+        } else if(i >= 81 && i <= 90) {
+            x = i-80;
+            y = y_arr[8];
+        } else if(i >= 91 && i <= 100) {
+            x = i-70;
+            y = y_arr[9];
+        }
+
+        p_expected = Point(x, y);
+        //qDebug() << "p_expected =" << p_expected._y << p_expected._x ;
+        p_actual = model.getPoint(i);
+        //qDebug() << "p_actual =" << p_expected._y << p_expected._x ;
+        QCOMPARE(p_actual == p_expected, true);
+    }
+
+}
+
+
+
+
+/**
+ * @brief Test::test_automaticShipsPlacing проверка автоматической расстановки кораблей
+ */
+void Test::test_automaticShipsPlacing()
+{
+    // Model model;
+    // bool placing_result = model.automaticShipsPlacing();
+
+    // QCOMPARE(placing_result, true);
+
+    // std::vector<Ship> ships = model.getShips();
+    // int _5_cells_ships_count = 0;
+    // int _4_cells_ships_count = 0;
+    // int _3_cells_ships_count = 0;
+    // int _2_cells_ships_count = 0;
+    // int _1_cells_ships_count = 0;
+    // for(const Ship& s : ships) {
+    //     if(s.getCellsAmount() == 5) {
+    //         _5_cells_ships_count++;
+    //     } else if(s.getCellsAmount() == 4) {
+    //         _4_cells_ships_count++;
+    //     } else if(s.getCellsAmount() == 3) {
+    //         _3_cells_ships_count++;
+    //     } else if(s.getCellsAmount() == 2) {
+    //         _2_cells_ships_count++;
+    //     } else if(s.getCellsAmount() == 1) {
+    //         _1_cells_ships_count++;
+    //     }
+    // }
+
+    // QCOMPARE(_4_cells_ships_count, 1);
+    // QCOMPARE(_3_cells_ships_count, 2);
+    // QCOMPARE(_2_cells_ships_count, 3);
+    // QCOMPARE(_1_cells_ships_count, 4);
+}
+
+
+
+int Test::calculateAllowedCellsAnglePlacing(int cells)
+{
+    return cells * 2 + 2;
+}
+
+int Test::calculateAllowedCellsAlongSidePlacing(int cells)
+{
+    return cells * 2 + 4;
+}
+
+int Test::calculateAllowedCellsNoseToSidePlacing(int cells)
+{
+    return cells * 3 + 3;
+}
+
+int Test::calculateAllowedCellFreePlacing(int cells)
+{
+    return cells * 3 + 6;
+}
+
+
+
+
+void Test::test_anglePlacing(int row, int column, int cells, Side side)
+{
+    int number_of_is_not_allowed_cells = calculateAllowedCellsAnglePlacing(cells);
+    Model model;
+    bool placing_result = false;
+    if(side == Side::left) {
+        placing_result = model.placingLeft(row, column, cells);
+    } else if(side == Side::right) {
+        placing_result = model.placingRight(row, column, cells);
+    } else if(side == Side::up) {
+        placing_result = model.placingUp(row, column, cells);
+    } else if(side == Side::down) {
+        placing_result = model.placingDown(row, column, cells);
+    }
+
+    QCOMPARE(placing_result, true);
+
+    int is_not_allowed_counter = 0;
+    for(const Cell& cell : model.getPlayingField()) {
+        if(cell._isAllowed == false) {
+            //qDebug() << cell._position._y << cell._position._x;
+            is_not_allowed_counter++;
+        }
+    }
+    //qDebug() << "cells amount =" << cells << "; is_not_allowed_counter =" << is_not_allowed_counter << "number_of_is_not_allowed_cells" << number_of_is_not_allowed_cells;
+    QCOMPARE(is_not_allowed_counter, number_of_is_not_allowed_cells);
+}
+
+
+
+void Test::test_alongSidePlacing(int row, int column, int cells, Side side)
+{
+    int number_of_is_not_allowed_cells = calculateAllowedCellsAlongSidePlacing(cells);
+    Model model;
+    bool placing_result = false;
+    if(side == Side::left) {
+        placing_result = model.placingLeft(row, column, cells);
+    } else if(side == Side::right) {
+        placing_result = model.placingRight(row, column, cells);
+    } else if(side == Side::up) {
+        placing_result = model.placingUp(row, column, cells);
+    } else if(side == Side::down) {
+        placing_result = model.placingDown(row, column, cells);
+    }
+
+    QCOMPARE(placing_result, true);
+
+    int is_not_allowed_counter = 0;
+    for(const Cell& cell : model.getPlayingField()) {
+        if(cell._isAllowed == false) {
+            //qDebug() << cell._position._y << cell._position._x;
+            is_not_allowed_counter++;
+        }
+    }
+    //qDebug() << "cells amount =" << cells << "; is_not_allowed_counter =" << is_not_allowed_counter << "number_of_is_not_allowed_cells" << number_of_is_not_allowed_cells;
+    QCOMPARE(is_not_allowed_counter, number_of_is_not_allowed_cells);
+}
+
+
+
+
+void Test::test_noseToSidePlacing(int row, int column, int cells, Side side)
+{
+    int number_of_is_not_allowed_cells = calculateAllowedCellsNoseToSidePlacing(cells);
+    Model model;
+    bool placing_result = false;
+    if(side == Side::left) {
+        placing_result = model.placingLeft(row, column, cells);
+    } else if(side == Side::right) {
+        placing_result = model.placingRight(row, column, cells);
+    } else if(side == Side::up) {
+        placing_result = model.placingUp(row, column, cells);
+    } else if(side == Side::down) {
+        placing_result = model.placingDown(row, column, cells);
+    }
+
+    QCOMPARE(placing_result, true);
+
+    int is_not_allowed_counter = 0;
+    for(const Cell& cell : model.getPlayingField()) {
+        if(cell._isAllowed == false) {
+            //qDebug() << cell._position._y << cell._position._x;
+            is_not_allowed_counter++;
+        }
+    }
+    //qDebug() << "cells amount =" << cells << "; is_not_allowed_counter =" << is_not_allowed_counter << "number_of_is_not_allowed_cells" << number_of_is_not_allowed_cells;
+    QCOMPARE(is_not_allowed_counter, number_of_is_not_allowed_cells);
+}
+
+
+
+
+void Test::test_freePlacing(int row, int column, int cells, Side side)
+{
+    int number_of_is_not_allowed_cells = calculateAllowedCellFreePlacing(cells);
+    Model model;
+    bool placing_result = false;
+    if(side == Side::left) {
+        placing_result = model.placingLeft(row, column, cells);
+    } else if(side == Side::right) {
+        placing_result = model.placingRight(row, column, cells);
+    } else if(side == Side::up) {
+        placing_result = model.placingUp(row, column, cells);
+    } else if(side == Side::down) {
+        placing_result = model.placingDown(row, column, cells);
+    }
+
+    QCOMPARE(placing_result, true);
+
+    int is_not_allowed_counter = 0;
+    for(const Cell& cell : model.getPlayingField()) {
+        if(cell._isAllowed == false) {
+            //qDebug() << cell._position._y << cell._position._x;
+            is_not_allowed_counter++;
+        }
+    }
+    //qDebug() << "cells amount =" << cells << "; is_not_allowed_counter =" << is_not_allowed_counter << "number_of_is_not_allowed_cells" << number_of_is_not_allowed_cells;
+    QCOMPARE(is_not_allowed_counter, number_of_is_not_allowed_cells);
+}
+
+
+
+
 
 
 

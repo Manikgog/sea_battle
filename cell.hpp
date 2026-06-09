@@ -8,8 +8,19 @@ static inline const std::array<QString, 10> y_arr = {"а", "б", "в", "г", "д
 
 
 struct Point {
+    Point() = default;
+
+    explicit Point(int x, const QString& y)
+        : _x(x)
+        , _y(y) {}
+
+
     QString _y = y_arr[0];
     int     _x = 0;
+
+    bool operator==(const Point& other) const {
+        return other._x == _x && other._y == _y;
+    }
 };
 
 struct Cell {

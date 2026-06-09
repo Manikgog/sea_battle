@@ -23,6 +23,10 @@ struct Ship {
         return _cells;
     }
 
+    int getCellsAmount() const {
+        return _cells.size();
+    }
+
 private:
     const std::vector<Cell*> _cells;
 };

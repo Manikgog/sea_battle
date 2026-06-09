@@ -19,38 +19,26 @@ int main(int argc, char *argv[])
 
     Model model;
 
-    int row = 5;
-    int column = 1;
-    int cells = 5;
-    bool result_placing = model.placingUp(row, column, cells);
+    bool placing_result = model.automaticShipsPlacing();
 
-    //Point p = model.getPoint(11);
-    // if(model.automaticShipsPlacing()) {
-    //     std::cout << "размещение прошло успешно" << std::endl;
-    // }
-    // std::vector<Cell> playingField = model.getPlayingField();
-    // int cell_counter = 0;
-    // int row = 0;
-    // std::cout << "\t";
-    // for(int i = 0; i < 10; ++i) {
-    //     std::cout << i << "\t";
-    // }
-    // std::cout << std::endl;
+    int count_cells = 0;
+    for(int i = 0; i < model.getPlayingField().size(); ++i) {
+       if(i%10 == 0) {
+           std::cout << std::endl;
+       }
+       if(model.getPlayingField()[i]._isOccupied) {
+           count_cells++;
+           std::cout << "+ ";
+       } else if(model.getPlayingField()[i]._isAllowed == false) {
+           std::cout << "  ";
+       }
+       else{
+           std::cout << "  ";
+       }
 
-    // for(int i = 0; i < playingField.size(); ++i) {
-    //     if(i%10 == 0) {
-    //         std::cout << std::endl;
-    //         std::cout << i/10 << "\t";
-    //     }
-    //     if(playingField[i]._isOccupied) {
-    //         cell_counter++;
-    //         std::cout << "+\t";
-    //     }else {
-    //         std::cout << "0\t";
-    //     }
-    // }
-    // std::cout << std::endl;
-    // qDebug() << "cell_counter =" << cell_counter;
+    }
+   std::cout << std::endl;
+   std::cout << std::endl;
 
     return app.exec();
 }
