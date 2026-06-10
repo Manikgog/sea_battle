@@ -71,6 +71,15 @@ bool Model::automaticShipsPlacing() {
     return true;
 }
 
+
+void Model::reset() {
+    for(int i = 0; i < 100; ++i) {
+        _playingField[i] = Cell();
+    }
+    _ships.clear();
+}
+
+
 /**
  * @brief Model::isCellFree метод для определения занята ли указанная позиция
  * @param row

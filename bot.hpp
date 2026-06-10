@@ -2,27 +2,33 @@
 #define BOT_HPP
 
 #include "utils.hpp"
+#include "model.hpp"
 
 class Bot {
 
   public:
-    Bot(int first_index, int last_index) {
-        for(int i = first_index; i <= last_index; ++i) {
-            _shots.push_back(false);
-        }
+
+    Bot() {
+        Model model;
+        int size = model.getPlayingField().size();
+        _shots = std::vector<bool>(size, false);
     }
 
-    int shot(int first_index, int last_index) {
-        int index = getRandomNumber(first_index, last_index);
+    int shoot() {
+        int index = getRandomNumber(0, _shots.size());
         while(_shots[index] == true) {
-            index = getRandomNumber(first_index, last_index);
+            index = getRandomNumber(0, _shots.size());
         }
         _shots[index] = true;
         return index;
     }
 
+    Model _model;               // класс с картой кораблей игрока, то есть по которому будет стрелять компьютер (бот)
+
   private:
+
     std::vector<bool> _shots;   // вектор bool, если по точке уже производился удар, то значение равно true, не производился - false
+
 };
 
 #endif // BOT_HPP

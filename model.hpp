@@ -18,6 +18,7 @@ public:
     Model();
     bool isAllShipsIsDestroyed() const;
     bool automaticShipsPlacing();
+    void reset();
 
     Point getPoint(int number);
     bool isCellFree(int row, int column);
