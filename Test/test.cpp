@@ -2,6 +2,7 @@
 #include <QDebug>
 
 #include "../model.hpp"
+#include "../utils.hpp"
 
 class Test : public QObject
 {
@@ -87,7 +88,7 @@ void Test::test_getRandomNumber() {
     }
 
     while(!results.empty()) {
-        int number = model.getRandomNumber(1, 5);
+        int number = getRandomNumber(1, 5);
         auto it = std::find(results.begin(), results.end(), number);
         if(it != results.end()) {
             results.erase(it);

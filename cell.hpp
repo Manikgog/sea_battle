@@ -21,6 +21,7 @@ struct Point {
     bool operator==(const Point& other) const {
         return other._x == _x && other._y == _y;
     }
+
 };
 
 struct Cell {

@@ -1,4 +1,4 @@
-#include <random>
+
 #include <QDebug>
 #include <iostream>
 #include "model.hpp"
@@ -18,7 +18,7 @@ Model::Model() {
     }
 }
 
-bool Model::isAllShipsIsDestroyed() {
+bool Model::isAllShipsIsDestroyed() const {
     for(const Ship& ship : _ships) {
         if(!ship.isDestroyed())
             return false;
@@ -237,7 +237,7 @@ bool Model::placingDown(int row, int column, int cells) {
 
 
 
-const std::vector<Ship> Model::getShips() {
+const std::vector<Ship>& Model::getShips() const {
     return _ships;
 }
 
@@ -515,16 +515,7 @@ bool Model::automaticPlacingShip(int cells) {
 
 
 
-int Model::getRandomNumber(int start_number, int end_number) {
-    static std::random_device rd;
-    static std::mt19937 gen(rd());
-    std::uniform_int_distribution<> dis(start_number, end_number);
-    return dis(gen);
-}
-
-
-
-std::vector<Cell> Model::getPlayingField() {
+const std::vector<Cell>& Model::getPlayingField() const {
     return _playingField;
 }
 

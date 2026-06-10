@@ -16,22 +16,20 @@ class Model {
 
 public:
     Model();
-    bool isAllShipsIsDestroyed();
+    bool isAllShipsIsDestroyed() const;
     bool automaticShipsPlacing();
 
     Point getPoint(int number);
     bool isCellFree(int row, int column);
-    int getRandomNumber(int start_number, int end_number);
-    std::vector<Cell> getPlayingField();
+    const std::vector<Cell>& getPlayingField() const;
     bool automaticPlacingShip(int cells);
     bool placingLeft(int row, int column, int cells);
     bool placingRight(int row, int column, int cells);
     bool placingUp(int row, int column, int cells);
     bool placingDown(int row, int column, int cells);
-    const std::vector<Ship> getShips();
+    const std::vector<Ship>& getShips() const;
 
 private:
-
 
     void markNotAllowedPlacingPoint(int column, int row, Side side, int cells);
     void addShip(int row, int column, Side side, int cells);
