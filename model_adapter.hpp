@@ -3,7 +3,9 @@
 
 #include <QObject>
 #include <QQmlEngine>
+#include <qqmlintegration.h>
 #include "model.hpp"
+#include "bot.hpp"
 
 class ModelAdapter : public QObject {
     Q_OBJECT
@@ -15,9 +17,14 @@ class ModelAdapter : public QObject {
   public:
     explicit ModelAdapter(QObject *parent = nullptr);
 
-    Q_INVOKABLE bool getCellIsShoted(int index);
-    Q_INVOKABLE bool getCellIsOccupied(int index);
+    Q_INVOKABLE bool getBotCellIsShoted(int index);
+    Q_INVOKABLE bool getBotCellIsOccupied(int index);
+
+    Q_INVOKABLE bool getPlayerCellIsOccupied(int index);
+    Q_INVOKABLE bool getPlayerCellIsShoted(int index);
+
     Q_INVOKABLE void shot(int index);
+    Q_INVOKABLE void botMove();
     Q_INVOKABLE void newGame();
     Q_INVOKABLE QString getGameStatus();
 
@@ -28,7 +35,8 @@ class ModelAdapter : public QObject {
   private:
     void checkWinCondition();
 
-    Model _model;
+    Model   _model;               // поле бота
+    Bot     _bot;                 // бот, который содержит поле игрока
     bool _gameWon;
 };
 

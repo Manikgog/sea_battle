@@ -98,18 +98,18 @@ Window {
 
                         function getCellIsShoted(cellIndex) {
                             if (!root.model) return false;
-                            return root.model.getCellIsShoted(cellIndex);
+                            return root.model.getBotCellIsShoted(cellIndex);
                         }
 
                         function getCellIsOccupied(cellIndex) {
                             if (!root.model) return false;
-                            return root.model.getCellIsOccupied(cellIndex);
+                            return root.model.getBotCellIsOccupied(cellIndex);
                         }
 
                         function getCellMark(cellIndex) {
                             if (!root.model) return "";
-                            if (root.model.getCellIsShoted(cellIndex)) {
-                                if (root.model.getCellIsOccupied(cellIndex)) {
+                            if (root.model.getBotCellIsShoted(cellIndex)) {
+                                if (root.model.getBotCellIsOccupied(cellIndex)) {
                                     return "✖";
                                 } else {
                                     return "•";
@@ -120,7 +120,7 @@ Window {
 
                         function getMarkColor(cellIndex) {
                             if (!root.model) return "black";
-                            if (root.model.getCellIsOccupied(cellIndex)) {
+                            if (root.model.getBotCellIsOccupied(cellIndex)) {
                                 return "red";
                             } else {
                                 return "blue";
@@ -129,8 +129,8 @@ Window {
 
                         function getCellColor(cellIndex) {
                             if (!root.model) return "#ecf0f1";
-                            if (root.model.getCellIsShoted(cellIndex)) {
-                                if (root.model.getCellIsOccupied(cellIndex)) {
+                            if (root.model.getBotCellIsShoted(cellIndex)) {
+                                if (root.model.getBotCellIsOccupied(cellIndex)) {
                                     return "mistyrose";
                                 } else {
                                     return "aliceblue";

@@ -9,15 +9,18 @@ class Bot {
   public:
 
     Bot() {
-        Model model;
-        int size = model.getPlayingField().size();
+        _model = Model();
+        int size = _model.getPlayingField().size();
         _shots = std::vector<bool>(size, false);
     }
 
     int shoot() {
-        int index = getRandomNumber(0, _shots.size());
+        int index = getRandomNumber(0, _shots.size()-1);
         while(_shots[index] == true) {
-            index = getRandomNumber(0, _shots.size());
+            index = getRandomNumber(0, _shots.size()-1);
+            if(isAllIndexesTrue()) {
+                return -1;
+            }
         }
         _shots[index] = true;
         return index;
@@ -26,6 +29,10 @@ class Bot {
     Model _model;               // класс с картой кораблей игрока, то есть по которому будет стрелять компьютер (бот)
 
   private:
+
+    bool isAllIndexesTrue() {
+        return std::all_of(_shots.begin(), _shots.end(), [](bool b) { return b; });
+    }
 
     std::vector<bool> _shots;   // вектор bool, если по точке уже производился удар, то значение равно true, не производился - false
 
