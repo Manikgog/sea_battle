@@ -4,19 +4,31 @@ import QtQuick.Layouts
 
 Window {
     id: root
-    width: 600
-    height: 700
+    width: 1100
+    height: 750
     visible: true
     title: qsTr("Морской бой")
 
     property var model: ModelAdapter
 
-    // Функция для обновления конкретной клетки
-    function updateCell(index) {
-        var item = gridRepeater.itemAt(index);
+    // Функция для обновления конкретной клетки поля бота
+    function updateBotCell(index) {
+        var item = botGridRepeater.itemAt(index);
         if (item) {
             item.color = item.getCellColor(index);
-            // Принудительно обновляем текст
+            var textItem = item.children[0];
+            if (textItem) {
+                textItem.text = item.getCellMark(index);
+                textItem.color = item.getMarkColor(index);
+            }
+        }
+    }
+
+    // Функция для обновления конкретной клетки поля игрока
+    function updatePlayerCell(index) {
+        var item = playerGridRepeater.itemAt(index);
+        if (item) {
+            item.color = item.getCellColor(index);
             var textItem = item.children[0];
             if (textItem) {
                 textItem.text = item.getCellMark(index);
@@ -28,7 +40,8 @@ Window {
     // Функция для обновления всех клеток
     function updateAllCells() {
         for (var i = 0; i < 100; i++) {
-            updateCell(i);
+            updateBotCell(i);
+            updatePlayerCell(i);
         }
     }
 
@@ -36,107 +49,206 @@ Window {
         anchors.fill: parent
         anchors.margins: 20
         spacing: 20
-/*
-        Text {
-            text: "Морской бой"
-            font.pixelSize: 28
-            font.bold: true
-            horizontalAlignment: Text.AlignHCenter
-            Layout.fillWidth: true
-            color: "darkblue"
-        }
-*/
-        Rectangle {
-            Layout.preferredWidth: 500
-            Layout.preferredHeight: 500
+
+        RowLayout {
+            spacing: 40
             Layout.alignment: Qt.AlignHCenter
-            color: "lightgray"
-            border.color: "silver"
-            border.width: 2
-            radius: 5
 
-            Grid {
-                id: gameGrid
-                anchors.centerIn: parent
-                rows: 10
-                columns: 10
-                spacing: 2
+            // Поле игрока
+            Column {
+                spacing: 10
+                Text {
+                    text: "🚢 Ваше поле"
+                    font.pixelSize: 18
+                    font.bold: true
+                    horizontalAlignment: Text.AlignHCenter
+                    width: 500
+                    color: "#2c3e50"
+                }
 
-                Repeater {
-                    id: gridRepeater
-                    model: 100
+                Rectangle {
+                    width: 500
+                    height: 500
+                    color: "lightgray"
+                    border.color: "silver"
+                    border.width: 2
+                    radius: 5
 
-                    Rectangle {
-                        id: cellRect
-                        width: 46
-                        height: 46
-                        color: getCellColor(index)
-                        border.color: "slategray"
-                        border.width: 1
+                    Grid {
+                        anchors.centerIn: parent
+                        rows: 10
+                        columns: 10
+                        spacing: 2
 
-                        Text {
-                            id: cellText
-                            anchors.centerIn: parent
-                            text: getCellMark(index)
-                            font.pixelSize: 24
-                            font.bold: true
-                            color: getMarkColor(index)
-                        }
+                        Repeater {
+                            id: playerGridRepeater
+                            model: 100
 
-                        MouseArea {
-                            anchors.fill: parent
-                            onClicked: {
-                                if (root.model && !getCellIsShoted(index)) {
-                                    root.model.shot(index);
-                                    // Обновляем только эту клетку
-                                    root.updateCell(index);
-                                    // Обновляем статус игры
-                                    statusText.text = root.model.getGameStatus();
+                            Rectangle {
+                                id: playerCellRect
+                                width: 46
+                                height: 46
+                                color: getCellColor(index)
+                                border.color: "slategray"
+                                border.width: 1
+
+                                Text {
+                                    id: playerCellText
+                                    anchors.centerIn: parent
+                                    text: getCellMark(index)
+                                    font.pixelSize: 24
+                                    font.bold: true
+                                    color: getMarkColor(index)
+                                }
+
+                                function getCellIsShoted(cellIndex) {
+                                    if (!root.model) return false;
+                                    return root.model.getPlayerCellIsShoted(cellIndex);
+                                }
+
+                                function getCellIsOccupied(cellIndex) {
+                                    if (!root.model) return false;
+                                    return root.model.getPlayerCellIsOccupied(cellIndex);
+                                }
+
+                                function getCellMark(cellIndex) {
+                                    if (!root.model) return "";
+                                    if (root.model.getPlayerCellIsShoted(cellIndex)) {
+                                        if (root.model.getPlayerCellIsOccupied(cellIndex)) {
+                                            return "✖";
+                                        } else {
+                                            return "•";
+                                        }
+                                    }
+                                    return "";
+                                }
+
+                                function getMarkColor(cellIndex) {
+                                    if (!root.model) return "black";
+                                    if (root.model.getPlayerCellIsOccupied(cellIndex)) {
+                                        return "red";
+                                    } else {
+                                        return "";
+                                    }
+                                }
+
+                                function getCellColor(cellIndex) {
+                                    if (!root.model) return "#ecf0f1";
+                                    if (root.model.getPlayerCellIsShoted(cellIndex)) {
+                                        if (root.model.getPlayerCellIsOccupied(cellIndex)) {
+                                            return "#e74c3c";
+                                        }
+                                    }
+                                    if (root.model.getPlayerCellIsOccupied(cellIndex)) {
+                                        return "#5dade2";
+                                    }
+                                    return "#ecf0f1";
                                 }
                             }
                         }
+                    }
+                }
+            }
 
-                        function getCellIsShoted(cellIndex) {
-                            if (!root.model) return false;
-                            return root.model.getBotCellIsShoted(cellIndex);
-                        }
+            // Поле бота
+            Column {
+                spacing: 10
+                Text {
+                    text: "🤖 Поле противника"
+                    font.pixelSize: 18
+                    font.bold: true
+                    horizontalAlignment: Text.AlignHCenter
+                    width: 500
+                    color: "#2c3e50"
+                }
 
-                        function getCellIsOccupied(cellIndex) {
-                            if (!root.model) return false;
-                            return root.model.getBotCellIsOccupied(cellIndex);
-                        }
+                Rectangle {
+                    width: 500
+                    height: 500
+                    color: "lightgray"
+                    border.color: "silver"
+                    border.width: 2
+                    radius: 5
 
-                        function getCellMark(cellIndex) {
-                            if (!root.model) return "";
-                            if (root.model.getBotCellIsShoted(cellIndex)) {
-                                if (root.model.getBotCellIsOccupied(cellIndex)) {
-                                    return "✖";
-                                } else {
-                                    return "•";
+                    Grid {
+                        anchors.centerIn: parent
+                        rows: 10
+                        columns: 10
+                        spacing: 2
+
+                        Repeater {
+                            id: botGridRepeater
+                            model: 100
+
+                            Rectangle {
+                                id: botCellRect
+                                width: 46
+                                height: 46
+                                color: getCellColor(index)
+                                border.color: "slategray"
+                                border.width: 1
+
+                                Text {
+                                    id: botCellText
+                                    anchors.centerIn: parent
+                                    text: getCellMark(index)
+                                    font.pixelSize: 24
+                                    font.bold: true
+                                    color: getMarkColor(index)
+                                }
+
+                                MouseArea {
+                                    anchors.fill: parent
+                                    onClicked: {
+                                        if (root.model && !getCellIsShoted(index)) {
+                                            root.model.shot(index);
+                                            root.updateBotCell(index);
+                                            statusText.text = root.model.getGameStatus();
+                                        }
+                                    }
+                                }
+
+                                function getCellIsShoted(cellIndex) {
+                                    if (!root.model) return false;
+                                    return root.model.getBotCellIsShoted(cellIndex);
+                                }
+
+                                function getCellIsOccupied(cellIndex) {
+                                    if (!root.model) return false;
+                                    return root.model.getBotCellIsOccupied(cellIndex);
+                                }
+
+                                function getCellMark(cellIndex) {
+                                    if (!root.model) return "";
+                                    if (root.model.getBotCellIsShoted(cellIndex)) {
+                                        if (root.model.getBotCellIsOccupied(cellIndex)) {
+                                            return "✖";
+                                        } else {
+                                            return "•";
+                                        }
+                                    }
+                                    return "";
+                                }
+
+                                function getMarkColor(cellIndex) {
+                                    if (!root.model) return "black";
+                                    if (root.model.getBotCellIsOccupied(cellIndex)) {
+                                        return "red";
+                                    } else {
+                                        return "";
+                                    }
+                                }
+
+                                function getCellColor(cellIndex) {
+                                    if (!root.model) return "#ecf0f1";
+                                    if (root.model.getBotCellIsShoted(cellIndex)) {
+                                        if (root.model.getBotCellIsOccupied(cellIndex)) {
+                                            return "#e74c3c";
+                                        }
+                                    }
+                                    return "#ecf0f1";
                                 }
                             }
-                            return "";
-                        }
-
-                        function getMarkColor(cellIndex) {
-                            if (!root.model) return "black";
-                            if (root.model.getBotCellIsOccupied(cellIndex)) {
-                                return "red";
-                            } else {
-                                return "blue";
-                            }
-                        }
-
-                        function getCellColor(cellIndex) {
-                            if (!root.model) return "#ecf0f1";
-                            if (root.model.getBotCellIsShoted(cellIndex)) {
-                                if (root.model.getBotCellIsOccupied(cellIndex)) {
-                                    return "mistyrose";
-                                } else {
-                                    return "aliceblue";
-                                }
-                            }
-                            return "#ffffff";
                         }
                     }
                 }
@@ -144,20 +256,18 @@ Window {
         }
 
         Button {
-            text: "Новая игра"
+            text: "🔄 Новая игра"
             Layout.alignment: Qt.AlignHCenter
             font.pixelSize: 16
             onClicked: {
                 root.model.newGame();
-                // Обновляем все клетки
                 root.updateAllCells();
-                // Обновляем статус игры
                 statusText.text = root.model.getGameStatus();
-                statusText.color = "seagreen";
+                statusText.color = "#27ae60";
             }
             background: Rectangle {
-                color: parent.pressed ? "royalblue" : "cornflowerblue"
-                radius: 5
+                color: parent.pressed ? "#2980b9" : "#3498db"
+                radius: 8
             }
             contentItem: Text {
                 text: parent.text
@@ -168,27 +278,46 @@ Window {
             }
         }
 
-        Text {
-            id: statusText
-            text: root.model ? root.model.getGameStatus() : ""
-            font.pixelSize: 18
-            font.bold: true
-            horizontalAlignment: Text.AlignHCenter
+        Rectangle {
             Layout.fillWidth: true
-            color: "seagreen"
+            Layout.preferredHeight: 50
+            color: "#ecf0f1"
+            radius: 8
+            border.color: "#bdc3c7"
+            border.width: 1
+
+            Text {
+                id: statusText
+                anchors.centerIn: parent
+                text: root.model ? root.model.getGameStatus() : ""
+                font.pixelSize: 16
+                font.bold: true
+                horizontalAlignment: Text.AlignHCenter
+                color: "#2c3e50"
+            }
         }
 
         Connections {
             target: root.model
             function onGameWon() {
-                statusText.text = "ПОБЕДА! Все корабли уничтожены!"
-                statusText.color = "tomato"
+                statusText.text = "🏆 ПОБЕДА! 🏆\nВсе корабли противника уничтожены!"
+                statusText.color = "#e74c3c"
             }
             function onGameStatusChanged() {
-                // Обновляем статус
                 statusText.text = root.model.getGameStatus()
-                // Не перерисовываем все клетки, только если нужно
+                statusText.color = "#2c3e50"
+                // Обновляем поле бота при изменении статуса (после хода бота)
+                for (var i = 0; i < 100; i++) {
+                    root.updateBotCell(i);
+                    root.updatePlayerCell(i);
+                }
             }
+        }
+    }
+
+    Component.onCompleted: {
+        if (root.model) {
+            statusText.text = root.model.getGameStatus();
         }
     }
 }

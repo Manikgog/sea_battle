@@ -14,7 +14,7 @@ ModelAdapter::ModelAdapter(QObject *parent)
 }
 
 bool ModelAdapter::getBotCellIsShoted(int index) {
-    //qDebug() << __FUNCTION__;
+    //qDebug() << __FUNCTION__ << "index =" << index;
     if (index < 0 || index >= _model.getPlayingField().size()) {
         return false;
     }
@@ -43,7 +43,7 @@ bool ModelAdapter::getPlayerCellIsShoted(int index)
     if (index < 0 || index >= _bot._model.getPlayingField().size()) {
         return false;
     }
-    qDebug() << __FUNCTION__ << "index =" << index;
+    //qDebug() << __FUNCTION__ << "index =" << index;
     return _bot._model.getPlayingField()[index]._isShoted;
 }
 
@@ -104,15 +104,18 @@ void ModelAdapter::botMove() {
             cell._isShoted = true;
 
             if (cell._isOccupied) {
+                _bot.setHit(index);
                 qDebug() << "Bot HIT at player cell:" << index;
                 // Если бот попал, он может сделать еще один ход
-                // Для простоты пока не реализуем дополнительный ход
+                emit gameStatusChanged();
+                botMove();
             } else {
                 qDebug() << "Bot MISS at player cell:" << index;
+                emit gameStatusChanged();
             }
         }
 
-        emit gameStatusChanged();
+
     }
 }
 
