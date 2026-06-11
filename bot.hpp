@@ -34,6 +34,22 @@ class Bot {
     void setHit(int index) {
         _shots[index]._isShoted = true;
         _shots[index]._isOccupied = true;
+        int upper_diagonal_left_index = index - 11;
+        if(upper_diagonal_left_index >= 0) {
+            _shots[upper_diagonal_left_index]._isShoted = true;
+        }
+        int upper_diagonal_right_index = index - 9;
+        if(upper_diagonal_right_index >= 0) {
+            _shots[upper_diagonal_right_index]._isShoted = true;
+        }
+        int lower_diagonal_left_index = index + 9;
+        if(lower_diagonal_left_index < _shots.size()) {
+            _shots[lower_diagonal_left_index]._isShoted = true;
+        }
+        int lower_diagonal_right_index = index + 11;
+        if(lower_diagonal_right_index < _shots.size()) {
+            _shots[lower_diagonal_right_index]._isShoted = true;
+        }
     }
 
     std::optional<int> horizontalSearch() {
