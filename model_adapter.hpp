@@ -31,6 +31,7 @@ class ModelAdapter : public QObject {
   signals:
     void gameStatusChanged();
     void gameWon();
+    void gameOver();
 
   private:
     void checkWinCondition();
@@ -38,6 +39,7 @@ class ModelAdapter : public QObject {
     Model   _model;               // поле бота
     Bot     _bot;                 // бот, который содержит поле игрока
     bool _gameWon;
+    bool _gameOver;
 };
 
 #endif // MODEL_ADAPTER_HPP

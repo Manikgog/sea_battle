@@ -303,6 +303,12 @@ Window {
                 statusText.text = "🏆 ПОБЕДА! 🏆\nВсе корабли противника уничтожены!"
                 statusText.color = "#e74c3c"
             }
+
+            function onGameOver() {
+                statusText.text = "ВЫ ПРОИГРАЛИ! 🏆\nВсе ваши корабли уничтожены!"
+                statusText.color = "black"
+            }
+
             function onGameStatusChanged() {
                 statusText.text = root.model.getGameStatus()
                 statusText.color = "#2c3e50"

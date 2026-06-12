@@ -1,6 +1,7 @@
 #ifndef BOT_HPP
 #define BOT_HPP
 
+#include <QDebug>
 #include "utils.hpp"
 #include "model.hpp"
 
@@ -14,9 +15,20 @@ class Bot {
         _shots = std::vector<Cell>(size, Cell());
     }
 
+    void reset() {
+        _model = Model();
+        int size = _model.getPlayingField().size();
+        _shots = std::vector<Cell>(size, Cell());
+    }
+
     int shoot() {
-        if(horizontalSearch().has_value()) {
-            return horizontalSearch().value();
+        auto search_result = horizontalSearch();
+        if(search_result.has_value()) {
+            return search_result.value();
+        }
+        search_result = verticalSearch();
+        if(search_result.has_value()) {
+            return search_result.value();
         }
 
 
@@ -59,7 +71,10 @@ class Bot {
                 int column = i%10;
                 // перебор клеток вправо от обнаруженной клетки
                 for(int j = column + 1; j < column + 5 && j < _model.getColumns(); ++j) {
-                    int index = i/10 + j;
+                    int index = (i/10) * 10 + j;
+                    if(index >= _shots.size()) {
+                        return {};
+                    }
                     if(_shots[index]._isShoted == false) {
                         _shots[index]._isShoted = true;
                         return {index};
@@ -75,7 +90,10 @@ class Bot {
                 }
                 // перебор клеток влево от обнаруженной ячейки
                 for(int j = column - 1; j >= 0; --j) {
-                    int index = i/10 + j;
+                    int index = (i/10) * 10 + j;
+                    if(index >= _shots.size() || index < 0) {
+                        return {};
+                    }
                     if(_shots[index]._isShoted == false) {
                         _shots[index]._isShoted = true;
                         return {index};
@@ -91,8 +109,60 @@ class Bot {
                 }
             }
         }
+
         return {};
     }
+
+
+    std::optional<int> verticalSearch() {
+        for(int i = 0; i < _shots.size(); ++i) {
+            if(_shots[i]._isShoted == true
+                && _shots[i]._isOccupied == true) {
+                int row = i/10;
+                int column = i%10;
+                // перебор клеток вниз от обнаруженной клетки
+                for(int j = row + 1; j < row + 4 && j < _model.getRows(); ++j) {
+                    int index = j * 10 + column;
+                    if(index >= _shots.size()) {
+                        return {};
+                    }
+                    if(_shots[index]._isShoted == false) {
+                        _shots[index]._isShoted = true;
+                        return {index};
+                    }
+                    if(_shots[index]._isShoted == true
+                        && _shots[index]._isOccupied == true) {
+                        continue;
+                    }
+                    if(_shots[index]._isShoted == true
+                        && _shots[index]._isOccupied == false) {
+                        break;
+                    }
+                }
+                for(int j = row - 1; j >= 0; --j) {
+                    int index = j * 10 + column;
+                    if(index >= _shots.size() || index < 0) {
+                        return {};
+                    }
+                    if(_shots[index]._isShoted == false) {
+                        _shots[index]._isShoted = true;
+                        return {index};
+                    }
+                    if(_shots[index]._isShoted == true
+                        && _shots[index]._isOccupied == true) {
+                        continue;
+                    }
+                    if(_shots[index]._isShoted == true
+                        && _shots[index]._isOccupied == false) {
+                        break;
+                    }
+                }
+            }
+
+        }
+        return {};
+    }
+
 
     Model _model;               // класс с картой кораблей игрока, то есть по которому будет стрелять компьютер (бот)
 
