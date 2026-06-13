@@ -3,6 +3,7 @@
 
 #include "../model.hpp"
 #include "../utils.hpp"
+#include "../bot.hpp"
 
 class Test : public QObject
 {
@@ -21,24 +22,24 @@ private slots:
     void test_placingDown();
     void test_playingFieldInit();
     void test_automaticShipsPlacing();
+    void test_setHit();
 
   private:
     int calculateAllowedCellsAnglePlacing(int cells);       // подсчёт количества запрещенных к размещению других кораблей ячеек при размещении корабля в углу
     int calculateAllowedCellsAlongSidePlacing(int cells);   // подсчёт количества запрещенных к размещению других кораблей ячеек при размещении корабля вдоль стенки
     int calculateAllowedCellsNoseToSidePlacing(int cells);  // подсчёт количества запрещенных к размещению других кораблей ячеек при размещении корабля торцом к стенке
     int calculateAllowedCellFreePlacing(int cells);         // подсчёт количества запрещенных к размещению других кораблей ячеек при размещении корабля не касаясь стенок
+    void compareCoordinates(const std::set<int>& actual, const std::vector<int>& expected);
 
     void test_anglePlacing(int row, int column, int cells, Side side);     // тест для проверки правильности размещения в углу при размещении влево от точки
     void test_alongSidePlacing(int row, int column, int cells, Side side);     // тест для проверки правильности размещения если корабль находится вдоль стенки
     void test_noseToSidePlacing(int row, int column, int cells, Side side);    // тест для проверки правильности размещения если корабль находится торцом к стенке
     void test_freePlacing(int row, int column, int cells, Side side);          // тест для проверки правильности размещения если корабль не касается стенок
 
+
 };
 
-Test::Test() {
-
-
-}
+Test::Test() {}
 
 Test::~Test() {}
 
@@ -286,6 +287,18 @@ int Test::calculateAllowedCellFreePlacing(int cells)
     return cells * 3 + 6;
 }
 
+void Test::compareCoordinates(const std::set<int> &actual, const std::vector<int> &expected)
+{
+    bool ok = true;
+    for(int e : expected) {
+        if(actual.find(e) == actual.end()) {
+            ok = false;
+            break;
+        }
+    }
+    QCOMPARE(ok, true);
+}
+
 
 
 
@@ -407,6 +420,77 @@ void Test::test_freePlacing(int row, int column, int cells, Side side)
     }
     //qDebug() << "cells amount =" << cells << "; is_not_allowed_counter =" << is_not_allowed_counter << "number_of_is_not_allowed_cells" << number_of_is_not_allowed_cells;
     QCOMPARE(is_not_allowed_counter, number_of_is_not_allowed_cells);
+}
+
+
+
+/**
+ * @brief Test::test_setHit проверка работы метода setHit при различных расположениях клетки: в углу, возле стенки, не касаясь стенок
+ */
+void Test::test_setHit()
+{
+    Bot bot;
+    bot.setHit(11); // расположение не касаясь стенок
+    std::set<int> actual = bot.getMarkedCellsIndexes();
+    QCOMPARE(actual.size(), 5);
+    std::vector<int> expected{0, 2, 20, 22};
+    compareCoordinates(actual, expected);
+
+    bot.reset();
+    bot.setHit(0);  // расположение в углу
+    actual = bot.getMarkedCellsIndexes();
+    QCOMPARE(actual.size(), 2);
+    expected = {0, 11};
+    compareCoordinates(actual, expected);
+
+    bot.reset();
+    bot.setHit(9);  // расположение в углу
+    actual = bot.getMarkedCellsIndexes();
+    QCOMPARE(actual.size(), 2);
+    expected = {9, 18};
+    compareCoordinates(actual, expected);
+
+    bot.reset();
+    bot.setHit(90);  // расположение в углу
+    actual = bot.getMarkedCellsIndexes();
+    QCOMPARE(actual.size(), 2);
+    expected = {90, 81};
+    compareCoordinates(actual, expected);
+
+    bot.reset();
+    bot.setHit(99);  // расположение в углу
+    actual = bot.getMarkedCellsIndexes();
+    QCOMPARE(actual.size(), 2);
+    expected = {99, 88};
+    compareCoordinates(actual, expected);
+
+    bot.reset();
+    bot.setHit(10); // расположение возле левой стенки
+    actual = bot.getMarkedCellsIndexes();
+    QCOMPARE(actual.size(), 3);
+    expected = {1, 10, 21};
+    compareCoordinates(actual, expected);
+
+    bot.reset();
+    bot.setHit(19); // расположение возле правой стенки
+    actual = bot.getMarkedCellsIndexes();
+    QCOMPARE(actual.size(), 3);
+    expected = {8, 19, 28};
+    compareCoordinates(actual, expected);
+
+    bot.reset();
+    bot.setHit(1); // расположение возле верхней стенки
+    actual = bot.getMarkedCellsIndexes();
+    QCOMPARE(actual.size(), 3);
+    expected = {1, 10, 12};
+    compareCoordinates(actual, expected);
+
+    bot.reset();
+    bot.setHit(91); // расположение возле нижней стенки
+    actual = bot.getMarkedCellsIndexes();
+    QCOMPARE(actual.size(), 3);
+    expected = {80, 82, 91};
+    compareCoordinates(actual, expected);
 }
 
 

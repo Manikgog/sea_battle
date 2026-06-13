@@ -27,6 +27,7 @@ qt_add_qml_module(appsea_battle
     utils.hpp
     model_adapter.hpp
     SOURCES bot.hpp
+    SOURCES bot.cpp
 )
 
 set_target_properties(appsea_battle PROPERTIES
