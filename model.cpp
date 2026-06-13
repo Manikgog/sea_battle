@@ -251,6 +251,21 @@ const std::vector<Ship>& Model::getShips() const {
 }
 
 
+int Model::getShipsAmount() const {
+    int ships_counter = 0;
+    for(const Ship& ship : _ships) {
+        std::vector<Cell*> cells = ship.getCells();
+        for(const Cell* cell : cells) {
+            if(!cell->_isShoted) {
+                ships_counter++;
+                break;
+            }
+        }
+    }
+    return ships_counter;
+}
+
+
 
 /**
  * @brief placingLeft метод для пометки всех точек в радиусе одной клетки вокруг для запрещения размещения кораблей

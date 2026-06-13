@@ -8,7 +8,8 @@
 
 ModelAdapter::ModelAdapter(QObject *parent)
     : QObject(parent)
-      , _gameWon(false) {
+        , _gameWon(false)
+        , _gameOver(false){
     _model.automaticShipsPlacing();
     _bot._model.automaticShipsPlacing();
 }
@@ -82,7 +83,7 @@ void ModelAdapter::shot(int index) {
             // Используем QTimer для небольшой задержки перед ходом бота
             QTimer::singleShot(500, this, &ModelAdapter::botMove);
         }
-        checkWinCondition();
+
     }
 }
 
@@ -90,7 +91,7 @@ void ModelAdapter::shot(int index) {
 
 
 void ModelAdapter::botMove() {
-    if (_gameWon) {
+    if (_gameWon || _gameOver) {
         return;
     }
 
@@ -102,16 +103,21 @@ void ModelAdapter::botMove() {
     if (index >= 0 && index < static_cast<int>(playerField.size())) {
         auto& cell = playerField[index];
         if (!cell._isShoted) {
+            int ships_alive_before = _model.getShipsAmount();
             cell._isShoted = true;
 
             if (cell._isOccupied) {
-                _bot.setHit(index);
+                int ships_alive_after = _model.getShipsAmount();
+                if(ships_alive_before > ships_alive_after) {
+                    _bot.setHit(index, true);
+                } else {
+                    _bot.setHit(index);
+                }
                 qDebug() << "Bot HIT at player cell:" << index;
                 // Если бот попал, он может сделать еще один ход
                 emit gameStatusChanged();
-                if(_bot._model.isAllShipsIsDestroyed()) {
-                    _gameOver = true;
-                }
+                checkWinCondition();
+
                 botMove();
             } else {
                 qDebug() << "Bot MISS at player cell:" << index;
@@ -130,6 +136,7 @@ void ModelAdapter::newGame() {
     _bot.reset();
     _bot._model.automaticShipsPlacing();
     _gameWon = false;
+    _gameOver = false;
     qDebug() << __FUNCTION__;
     std::cout << "Поле бота:" << std::endl;
     for(int i = 0; i < _model.getPlayingField().size(); ++i) {
@@ -170,7 +177,7 @@ void ModelAdapter::newGame() {
     emit gameStatusChanged();
 }
 
-QString ModelAdapter::getGameStatus() {
+QString ModelAdapter::getBotGameStatus() {
     if (_gameWon) {
         return "ПОБЕДА!";
     }
@@ -187,14 +194,46 @@ QString ModelAdapter::getGameStatus() {
     return QString("Корабли уничтожены: %1 / %2").arg(shipsDestroyed).arg(totalShips);
 }
 
-void ModelAdapter::checkWinCondition() {
-    if(_gameOver && _bot._model.isAllShipsIsDestroyed()) {
-        qDebug() << "BOT IS WIN!!!!!!!!!";
-        emit gameOver();
-        emit gameStatusChanged();
+
+
+QString ModelAdapter::getPlayerGameStatus() {
+    if (_gameWon) {
+        return "ПОБЕДА!";
     }
-    if (_model.isAllShipsIsDestroyed() && !_gameWon) {
+
+    int shipsDestroyed = 0;
+    int totalShips = _bot._model.getShips().size();
+
+    for (const Ship& ship : _bot._model.getShips()) {
+        if (ship.isDestroyed()) {
+            shipsDestroyed++;
+        }
+    }
+
+    return QString("Корабли уничтожены: %1 / %2").arg(shipsDestroyed).arg(totalShips);
+}
+
+
+
+
+void ModelAdapter::checkWinCondition() {
+    bool playerLost = _bot._model.isAllShipsIsDestroyed();  // Все корабли игрока уничтожены?
+    bool playerWon = _model.isAllShipsIsDestroyed();         // Все корабли бота уничтожены?
+
+    qDebug() << "checkWinCondition: playerLost =" << playerLost << "playerWon =" << playerWon;
+
+    if (playerLost && !_gameOver) {
+        _gameOver = true;
+        qDebug() << "BOT WINS! Game Over!";
+
+        emit gameStatusChanged();
+        emit gameOver();
+        return;
+    }
+
+    if (playerWon && !_gameWon) {
         _gameWon = true;
+        qDebug() << "PLAYER WINS!";
         emit gameWon();
         emit gameStatusChanged();
     }

@@ -148,6 +148,25 @@ Window {
                         }
                     }
                 }
+
+                Rectangle {
+                    width: 500
+                    height: 50
+                    color: "#ecf0f1"
+                    radius: 8
+                    border.color: "#bdc3c7"
+                    border.width: 1
+
+                    Text {
+                        id: playerStatusText
+                        anchors.centerIn: parent
+                        text: root.model ? root.model.getPlayerGameStatus() : ""
+                        font.pixelSize: 16
+                        font.bold: true
+                        horizontalAlignment: Text.AlignHCenter
+                        color: "#2c3e50"
+                    }
+                }
             }
 
             // Поле бота
@@ -203,7 +222,8 @@ Window {
                                         if (root.model && !getCellIsShoted(index)) {
                                             root.model.shot(index);
                                             root.updateBotCell(index);
-                                            statusText.text = root.model.getGameStatus();
+                                            botStatusText.text = root.model.getBotGameStatus();
+                                            playerStatusText.text = root.model.getPlayerGameStatus();
                                         }
                                     }
                                 }
@@ -252,6 +272,25 @@ Window {
                         }
                     }
                 }
+
+                Rectangle {
+                    width: 500
+                    height: 50
+                    color: "#ecf0f1"
+                    radius: 8
+                    border.color: "#bdc3c7"
+                    border.width: 1
+
+                    Text {
+                        id: botStatusText
+                        anchors.centerIn: parent
+                        text: root.model ? root.model.getBotGameStatus() : ""
+                        font.pixelSize: 16
+                        font.bold: true
+                        horizontalAlignment: Text.AlignHCenter
+                        color: "#2c3e50"
+                    }
+                }
             }
         }
 
@@ -262,8 +301,10 @@ Window {
             onClicked: {
                 root.model.newGame();
                 root.updateAllCells();
-                statusText.text = root.model.getGameStatus();
-                statusText.color = "#27ae60";
+                botStatusText.text = root.model.getBotGameStatus();
+                botStatusText.color = "#27ae60";
+                playerStatusText.text = root.model.getPlayerGameStatus();
+                playerStatusText.color = "#27ae60";
             }
             background: Rectangle {
                 color: parent.pressed ? "#2980b9" : "#3498db"
@@ -278,40 +319,23 @@ Window {
             }
         }
 
-        Rectangle {
-            Layout.fillWidth: true
-            Layout.preferredHeight: 50
-            color: "#ecf0f1"
-            radius: 8
-            border.color: "#bdc3c7"
-            border.width: 1
 
-            Text {
-                id: statusText
-                anchors.centerIn: parent
-                text: root.model ? root.model.getGameStatus() : ""
-                font.pixelSize: 16
-                font.bold: true
-                horizontalAlignment: Text.AlignHCenter
-                color: "#2c3e50"
-            }
-        }
 
         Connections {
             target: root.model
             function onGameWon() {
-                statusText.text = "🏆 ПОБЕДА! 🏆\nВсе корабли противника уничтожены!"
-                statusText.color = "#e74c3c"
+                botStatusText.text = "🏆 ПОБЕДА! 🏆\nВсе корабли противника уничтожены!"
+                botStatusText.color = "#e74c3c"
             }
 
             function onGameOver() {
-                statusText.text = "ВЫ ПРОИГРАЛИ! 🏆\nВсе ваши корабли уничтожены!"
-                statusText.color = "black"
+                playerStatusText.text = "ВЫ ПРОИГРАЛИ! 🏆\nВсе ваши корабли уничтожены!"
+                playerStatusText.color = "black"
             }
 
             function onGameStatusChanged() {
-                statusText.text = root.model.getGameStatus()
-                statusText.color = "#2c3e50"
+                botStatusText.text = root.model.getBotGameStatus()
+                botStatusText.color = "#2c3e50"
                 // Обновляем поле бота при изменении статуса (после хода бота)
                 for (var i = 0; i < 100; i++) {
                     root.updateBotCell(i);
@@ -323,7 +347,8 @@ Window {
 
     Component.onCompleted: {
         if (root.model) {
-            statusText.text = root.model.getGameStatus();
+            botStatusText.text = root.model.getBotGameStatus();
+            playerStatusText.text = root.model.getPlayerGameStatus();
         }
     }
 }

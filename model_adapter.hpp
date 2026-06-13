@@ -12,7 +12,8 @@ class ModelAdapter : public QObject {
     QML_ELEMENT
     QML_SINGLETON
 
-    Q_PROPERTY(QString gameStatus READ getGameStatus NOTIFY gameStatusChanged)
+    Q_PROPERTY(QString botGameStatus READ getBotGameStatus NOTIFY gameStatusChanged)
+    Q_PROPERTY(QString playerGameStatus READ getPlayerGameStatus NOTIFY gameStatusChanged)
 
   public:
     explicit ModelAdapter(QObject *parent = nullptr);
@@ -26,7 +27,8 @@ class ModelAdapter : public QObject {
     Q_INVOKABLE void shot(int index);
     Q_INVOKABLE void botMove();
     Q_INVOKABLE void newGame();
-    Q_INVOKABLE QString getGameStatus();
+    Q_INVOKABLE QString getBotGameStatus();
+    Q_INVOKABLE QString getPlayerGameStatus();
 
   signals:
     void gameStatusChanged();
@@ -38,8 +40,8 @@ class ModelAdapter : public QObject {
 
     Model   _model;               // поле бота
     Bot     _bot;                 // бот, который содержит поле игрока
-    bool _gameWon;
-    bool _gameOver;
+    bool    _gameWon;
+    bool    _gameOver;
 };
 
 #endif // MODEL_ADAPTER_HPP

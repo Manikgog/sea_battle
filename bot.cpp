@@ -55,18 +55,22 @@ std::set<int> Bot::getMarkedCellsIndexes() {
      * @brief setHit метод для отметки поражения палубы корабля
      * @param index индекс в векторе _shots
      */
-void Bot::setHit(int index) {
+void Bot::setHit(int index, bool is_desroyed) {
     _shots[index]._isShoted = true;
     _shots[index]._isOccupied = true;
+    auto& playerField = const_cast<std::vector<Cell>&>(_model.getPlayingField());
+    playerField[index]._isShoted = true;
     if(index%10 != 0) { // если не крайняя левая клетка
         int upper_diagonal_left_index = index - 11;
         if(upper_diagonal_left_index >= 0) {
             _shots[upper_diagonal_left_index]._isShoted = true;
+            playerField[upper_diagonal_left_index]._isShoted = true;
         }
 
         int lower_diagonal_left_index = index + 9;
         if(lower_diagonal_left_index < _shots.size()) {
             _shots[lower_diagonal_left_index]._isShoted = true;
+            playerField[lower_diagonal_left_index]._isShoted = true;
         }
     }
 
@@ -74,11 +78,100 @@ void Bot::setHit(int index) {
         int upper_diagonal_right_index = index - 9;
         if(upper_diagonal_right_index >= 0) {
             _shots[upper_diagonal_right_index]._isShoted = true;
+            playerField[upper_diagonal_right_index]._isShoted = true;
         }
 
         int lower_diagonal_right_index = index + 11;
         if(lower_diagonal_right_index < _shots.size()) {
             _shots[lower_diagonal_right_index]._isShoted = true;
+            playerField[lower_diagonal_right_index]._isShoted = true;
+        }
+    }
+
+    if(is_desroyed) {
+        // определяем положение корабля, вертикальное или горизонтальное
+        int upper_index = index - 10;
+        // идем вверх и отмечаем левые и правые клетки для исключения из дальнейшей стрельбы
+        for(int i = upper_index; i >= 0; --i) {
+            if(_shots[i]._isOccupied && _shots[i]._isShoted) {
+                int left_index = i - 1;
+                if(left_index >= 0 && i%10 != 0) {
+                    _shots[left_index]._isShoted = true;
+                    playerField[left_index]._isShoted = true;
+                }
+                int right_index = i + 1;
+                if(right_index < _shots.size() && i%10 != 9) {
+                    _shots[right_index]._isShoted = true;
+                    playerField[right_index]._isShoted = true;
+                }
+            }
+            if(!_shots[i]._isOccupied && !_shots[i]._isShoted) {
+                _shots[i]._isShoted = true;
+                playerField[i]._isShoted = true;
+            }
+        }
+
+        int lower_index = index + 10;
+        // идём вниз и отмечаем левые и правые клетки для исключения из дальнейшей стрельбы
+        for(int i = lower_index; i < _shots.size(); ++i) {
+            if(_shots[i]._isOccupied && _shots[i]._isShoted) {
+                int left_index = i - 1;
+                if(left_index >= 0 && i%10 != 0) {
+                    _shots[left_index]._isShoted = true;
+                    playerField[left_index]._isShoted = true;
+                }
+                int right_index = i + 1;
+                if(right_index < _shots.size() && i%10 != 9) {
+                    _shots[right_index]._isShoted = true;
+                    playerField[right_index]._isShoted = true;
+                }
+            }
+            if(!_shots[i]._isOccupied && !_shots[i]._isShoted) {
+                _shots[i]._isShoted = true;
+                playerField[i]._isShoted = true;
+            }
+        }
+
+        // идём влево и отмечаем верхние и нижние клетки для исключения из дальнейшей стрельбы
+        int left_index = index - 1;
+        for(int i = left_index; i >= 0; --i) {
+            if(_shots[i]._isOccupied && _shots[i]._isShoted) {
+                int up_index = i - 10;
+                if(up_index >= 0) {
+                    _shots[up_index]._isShoted = true;
+                    playerField[up_index]._isShoted = true;
+                }
+                int low_index = i + 10;
+                if(low_index < _shots.size()) {
+                    _shots[low_index]._isShoted = true;
+                    playerField[low_index]._isShoted = true;
+                }
+            }
+            if(!_shots[i]._isOccupied && !_shots[i]._isShoted) {
+                _shots[i]._isShoted = true;
+                playerField[i]._isShoted = true;
+            }
+        }
+
+        // идём вправо и отмечаем верхние и нижние клетки для исключения из дальнейшей стрельбы
+        int right_index = index + 1;
+        for(int i = right_index; i < _shots.size(); ++i) {
+            if(_shots[i]._isOccupied && _shots[i]._isShoted) {
+                int up_index = i - 10;
+                if(up_index >= 0) {
+                    _shots[up_index]._isShoted = true;
+                    playerField[up_index]._isShoted = true;
+                }
+                int low_index = i + 10;
+                if(low_index < _shots.size()) {
+                    _shots[low_index]._isShoted = true;
+                    playerField[low_index]._isShoted = true;
+                }
+            }
+            if(!_shots[i]._isOccupied && !_shots[i]._isShoted) {
+                _shots[i]._isShoted = true;
+                playerField[i]._isShoted = true;
+            }
         }
     }
 }
