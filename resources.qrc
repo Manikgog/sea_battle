@@ -1,0 +1,5 @@
+<RCC>
+    <qresource prefix="/icon">
+        <file>sea_battle.ico</file>
+    </qresource>
+</RCC>

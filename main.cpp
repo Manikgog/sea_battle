@@ -1,10 +1,12 @@
 #include <QGuiApplication>
 #include <QQmlApplicationEngine>
 #include <QQmlContext>
+#include <QIcon>
 #include "model_adapter.hpp"
 
 int main(int argc, char *argv[]) {
     QGuiApplication app(argc, argv);
+    app.setWindowIcon(QIcon(":/icon/sea_battle.ico"));
 
     qmlRegisterSingletonType<ModelAdapter>("sea_battle", 1, 0, "ModelAdapter",
                                            [](QQmlEngine *engine, QJSEngine *scriptEngine) -> QObject* {

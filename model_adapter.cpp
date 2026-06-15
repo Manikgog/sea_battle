@@ -178,9 +178,6 @@ void ModelAdapter::newGame() {
 }
 
 QString ModelAdapter::getBotGameStatus() {
-    if (_gameWon) {
-        return "ПОБЕДА!";
-    }
 
     int shipsDestroyed = 0;
     int totalShips = _model.getShips().size();
@@ -197,9 +194,6 @@ QString ModelAdapter::getBotGameStatus() {
 
 
 QString ModelAdapter::getPlayerGameStatus() {
-    if (_gameWon) {
-        return "ПОБЕДА!";
-    }
 
     int shipsDestroyed = 0;
     int totalShips = _bot._model.getShips().size();

@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
+import QtQuick.Dialogs
 
 Window {
     id: root
@@ -10,6 +11,16 @@ Window {
     title: qsTr("Морской бой")
 
     property var model: ModelAdapter
+
+
+    MessageDialog {
+        id: gameMessageDialog
+        title: "Игра окончена"
+        buttons: MessageDialog.Ok
+        onAccepted: {
+            // Можно добавить действие при закрытии диалога
+        }
+    }
 
     // Функция для обновления конкретной клетки поля бота
     function updateBotCell(index) {
@@ -326,11 +337,17 @@ Window {
             function onGameWon() {
                 botStatusText.text = "🏆 ПОБЕДА! 🏆\nВсе корабли противника уничтожены!"
                 botStatusText.color = "#e74c3c"
+                gameMessageDialog.title = "Победа!"
+                gameMessageDialog.text = "🎉 ПОЗДРАВЛЯЕМ! 🎉\nВы уничтожили все корабли противника!"
+                gameMessageDialog.open()
             }
 
             function onGameOver() {
                 playerStatusText.text = "ВЫ ПРОИГРАЛИ! 🏆\nВсе ваши корабли уничтожены!"
                 playerStatusText.color = "black"
+                gameMessageDialog.title = "Игра окончена"
+                gameMessageDialog.text = "😢 Вы проиграли!\nВсе ваши корабли уничтожены."
+                gameMessageDialog.open()
             }
 
             function onGameStatusChanged() {
