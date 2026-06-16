@@ -5,8 +5,8 @@ import QtQuick.Dialogs
 
 Window {
     id: root
-    width: 1100
-    height: 750
+    width: 600
+    height: 450
     visible: true
     title: qsTr("Морской бой")
 
@@ -73,13 +73,13 @@ Window {
                     font.pixelSize: 18
                     font.bold: true
                     horizontalAlignment: Text.AlignHCenter
-                    width: 500
+                    width: 250
                     color: "#2c3e50"
                 }
 
                 Rectangle {
-                    width: 500
-                    height: 500
+                    width: 250
+                    height: 250
                     color: "lightgray"
                     border.color: "silver"
                     border.width: 2
@@ -97,8 +97,8 @@ Window {
 
                             Rectangle {
                                 id: playerCellRect
-                                width: 46
-                                height: 46
+                                width: 20
+                                height: 20
                                 color: getCellColor(index)
                                 border.color: "slategray"
                                 border.width: 1
@@ -161,7 +161,7 @@ Window {
                 }
 
                 Rectangle {
-                    width: 500
+                    width: 250
                     height: 50
                     color: "#ecf0f1"
                     radius: 8
@@ -188,13 +188,13 @@ Window {
                     font.pixelSize: 18
                     font.bold: true
                     horizontalAlignment: Text.AlignHCenter
-                    width: 500
+                    width: 250
                     color: "#2c3e50"
                 }
 
                 Rectangle {
-                    width: 500
-                    height: 500
+                    width: 250
+                    height: 250
                     color: "lightgray"
                     border.color: "silver"
                     border.width: 2
@@ -212,8 +212,8 @@ Window {
 
                             Rectangle {
                                 id: botCellRect
-                                width: 46
-                                height: 46
+                                width: 20
+                                height: 20
                                 color: getCellColor(index)
                                 border.color: "slategray"
                                 border.width: 1
@@ -285,7 +285,7 @@ Window {
                 }
 
                 Rectangle {
-                    width: 500
+                    width: 250
                     height: 50
                     color: "#ecf0f1"
                     radius: 8
@@ -343,7 +343,7 @@ Window {
             }
 
             function onGameOver() {
-                playerStatusText.text = "ВЫ ПРОИГРАЛИ! 🏆\nВсе ваши корабли уничтожены!"
+                playerStatusText.text = "ВЫ ПРОИГРАЛИ! 💀\nВсе ваши корабли уничтожены!"
                 playerStatusText.color = "black"
                 gameMessageDialog.title = "Игра окончена"
                 gameMessageDialog.text = "😢 Вы проиграли!\nВсе ваши корабли уничтожены."
