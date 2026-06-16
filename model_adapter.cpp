@@ -1,183 +1,392 @@
+#include "model_adapter.hpp"
+#include "server.hpp"
+#include "client.hpp"
 #include <QDebug>
-#include <iostream>
 #include <QTimer>
 
-#include "model_adapter.hpp"
-
-
-
 ModelAdapter::ModelAdapter(QObject *parent)
-    : QObject(parent)
-        , _gameWon(false)
-        , _gameOver(false){
+    : QObject(parent) {
     _model.automaticShipsPlacing();
-    _bot._model.automaticShipsPlacing();
+    _playerModel.automaticShipsPlacing();
+    updateStatus();
 }
 
 bool ModelAdapter::getBotCellIsShoted(int index) {
-    //qDebug() << __FUNCTION__ << "index =" << index;
-    if (index < 0 || index >= _model.getPlayingField().size()) {
+    if (index < 0 || index >= static_cast<int>(_model.getPlayingField().size())) {
         return false;
     }
     return _model.getPlayingField()[index]._isShoted;
 }
 
 bool ModelAdapter::getBotCellIsOccupied(int index) {
-    if (index < 0 || index >= _model.getPlayingField().size()) {
+    if (index < 0 || index >= static_cast<int>(_model.getPlayingField().size())) {
         return false;
     }
-    //qDebug() << __FUNCTION__ << "index =" << index;
     return _model.getPlayingField()[index]._isOccupied;
 }
 
-bool ModelAdapter::getPlayerCellIsOccupied(int index)
-{
-    if (index < 0 || index >= _bot._model.getPlayingField().size()) {
+bool ModelAdapter::getPlayerCellIsOccupied(int index) {
+    if (index < 0 || index >= static_cast<int>(_playerModel.getPlayingField().size())) {
         return false;
     }
-    //qDebug() << __FUNCTION__ << "index =" << index;
-    return _bot._model.getPlayingField()[index]._isOccupied;
+    return _playerModel.getPlayingField()[index]._isOccupied;
 }
 
-bool ModelAdapter::getPlayerCellIsShoted(int index)
-{
-    if (index < 0 || index >= _bot._model.getPlayingField().size()) {
+bool ModelAdapter::getPlayerCellIsShoted(int index) {
+    if (index < 0 || index >= static_cast<int>(_playerModel.getPlayingField().size())) {
         return false;
     }
-    //qDebug() << __FUNCTION__ << "index =" << index;
-    return _bot._model.getPlayingField()[index]._isShoted;
+    return _playerModel.getPlayingField()[index]._isShoted;
 }
 
 void ModelAdapter::shot(int index) {
+    if (_gameWon || _gameOver || !_gameStarted) {
+        return;
+    }
+
+    if (!_isMyTurn) {
+        emit gameMessage("Сейчас ход противника");
+        return;
+    }
+
+    if (index < 0 || index >= static_cast<int>(_playerModel.getPlayingField().size())) {
+        return;
+    }
+
+    auto& field = const_cast<std::vector<Cell>&>(_playerModel.getPlayingField());
+    auto& cell = field[index];
+
+    if (cell._isShoted) {
+        return;
+    }
+
+    qDebug() << "Player shoots at:" << index;
+
+    cell._isShoted = true;
+    bool isHit = cell._isOccupied;
+    bool isDestroyed = false;
+
+    if (isHit) {
+        for (const Ship& ship : _playerModel.getShips()) {
+            if (ship.isDestroyed()) {
+                isDestroyed = true;
+                qDebug() << "Enemy ship destroyed!";
+            }
+        }
+    }
+
+    sendMoveToOpponent(index, isHit, isDestroyed);
+    checkWinCondition();
+    updateStatus();
+
     if (_gameWon || _gameOver) {
         return;
     }
 
-    if (index < 0 || index >= static_cast<int>(_model.getPlayingField().size())) {
-        return;
+    if (!isHit) {
+        _isMyTurn = false;
+        emit turnChanged(false);
+        emit gameMessage("Промах! Ход переходит к противнику");
+    } else {
+        emit gameMessage("Попадание! Ваш ход продолжается");
     }
 
-    auto& botField = const_cast<std::vector<Cell>&>(_model.getPlayingField());
-    auto& cell = botField[index];
-
-    if (!cell._isShoted) {
-        qDebug() << "Player shoots at bot cell:" << index;
-
-        cell._isShoted = true;
-        bool is_miss = true;
-        if(cell._isOccupied) {
-            is_miss = false;
-            // Проверка на уничтожение корабля у бота
-            for (const Ship& ship : _model.getShips()) {
-                if (ship.isDestroyed()) {
-                    qDebug() << "Bot ship destroyed!";
-                }
-            }
-        }
-
-        checkWinCondition();
-        emit gameStatusChanged();
-
-        // Если игра не окончена, бот делает ответный ход
-        if (!_gameWon && is_miss) {
-            // Используем QTimer для небольшой задержки перед ходом бота
-            QTimer::singleShot(500, this, &ModelAdapter::botMove);
-        }
-
-    }
+    updateStatus();
 }
-
-
-
-
-void ModelAdapter::botMove() {
-    if (_gameWon || _gameOver) {
-        return;
-    }
-
-    // Бот выбирает случайную клетку для выстрела
-    int index = _bot.shoot();
-    qDebug() << "Bot shoots at player cell:" << index;
-
-    auto& playerField = const_cast<std::vector<Cell>&>(_bot._model.getPlayingField());
-    if (index >= 0 && index < static_cast<int>(playerField.size())) {
-        auto& cell = playerField[index];
-        if (!cell._isShoted) {
-            int ships_alive_before = _model.getShipsAmount();
-            cell._isShoted = true;
-
-            if (cell._isOccupied) {
-                int ships_alive_after = _model.getShipsAmount();
-                if(ships_alive_before > ships_alive_after) {
-                    _bot.setHit(index, true);
-                } else {
-                    _bot.setHit(index);
-                }
-                qDebug() << "Bot HIT at player cell:" << index;
-                // Если бот попал, он может сделать еще один ход
-                emit gameStatusChanged();
-                checkWinCondition();
-
-                botMove();
-            } else {
-                qDebug() << "Bot MISS at player cell:" << index;
-                emit gameStatusChanged();
-            }
-        }
-    }
-}
-
-
-
 
 void ModelAdapter::newGame() {
     _model.reset();
     _model.automaticShipsPlacing();
-    _bot.reset();
-    _bot._model.automaticShipsPlacing();
+    _playerModel.reset();
+    _playerModel.automaticShipsPlacing();
     _gameWon = false;
     _gameOver = false;
-    qDebug() << __FUNCTION__;
-    std::cout << "Поле бота:" << std::endl;
-    for(int i = 0; i < _model.getPlayingField().size(); ++i) {
-        if(i%10 == 0) {
-            std::cout << std::endl;
-        }
-        if(_model.getPlayingField()[i]._isOccupied) {
-            std::cout << "+ ";
-        } else if(_model.getPlayingField()[i]._isAllowed == false) {
-            std::cout << "  ";
-        }
-        else{
-            std::cout << "  ";
-        }
+    _gameStarted = false;
+    _isMyTurn = false;
+    _opponentReady = false;
 
+    if (_isServer) {
+        _isMyTurn = true;
+        _gameStarted = true;
+        emit turnChanged(true);
+        emit gameMessage("Новая игра начата! Ваш ход.");
+
+        QJsonObject startMsg;
+        startMsg["type"] = "startGame";
+        _server->sendMove(startMsg);
     }
-    std::cout << std::endl;
-    std::cout << std::endl;
 
-    std::cout << "Поле игрока:" << std::endl;
-    for(int i = 0; i < _bot._model.getPlayingField().size(); ++i) {
-        if(i%10 == 0) {
-            std::cout << std::endl;
-        }
-        if(_bot._model.getPlayingField()[i]._isOccupied) {
-            std::cout << "+ ";
-        } else if(_bot._model.getPlayingField()[i]._isAllowed == false) {
-            std::cout << "  ";
-        }
-        else{
-            std::cout << "  ";
-        }
-
-    }
-    std::cout << std::endl;
-    std::cout << std::endl;
-
+    updateStatus();
     emit gameStatusChanged();
+    qDebug() << "New game started";
+}
+
+bool ModelAdapter::startServer(int port) {
+    if (_isConnected) {
+        disconnectFromServer();
+    }
+
+    _server = std::make_unique<Server>(this);
+
+    connect(_server.get(), &Server::playerConnected,
+            this, &ModelAdapter::onConnected);
+    connect(_server.get(), &Server::playerDisconnected,
+            this, &ModelAdapter::onDisconnected);
+    connect(_server.get(), &Server::clientReady,
+            this, &ModelAdapter::onOpponentReady);
+    connect(_server.get(), &Server::moveReceived,
+            this, [this](const QJsonObject& move) {
+                onOpponentMove(move);
+            });
+    connect(_server.get(), &Server::error,
+            this, [this](const QString& error) {
+                emit gameMessage("Ошибка сервера: " + error);
+            });
+
+    if (_server->start(port)) {
+        _isServer = true;
+        _isClient = false;
+        _isConnected = false;
+        _isMyTurn = false;
+        _gameStarted = false;
+        emit gameModeChanged();
+        emit gameMessage("Сервер запущен на порту " + QString::number(port) +
+                         ". Ожидание подключения противника...");
+        updateStatus();
+        return true;
+    }
+
+    return false;
+}
+
+bool ModelAdapter::connectToServer(const QString& address, int port) {
+    if (_isConnected) {
+        disconnectFromServer();
+    }
+
+    _client = std::make_unique<Client>(this);
+
+    connect(_client.get(), &Client::connected,
+            this, &ModelAdapter::onConnected);
+    connect(_client.get(), &Client::disconnected,
+            this, &ModelAdapter::onDisconnected);
+    connect(_client.get(), &Client::gameStarted,
+            this, [this]() {
+                _gameStarted = true;
+                _isMyTurn = false;
+                emit turnChanged(false);
+                emit gameMessage("Игра началась! Ход противника");
+                updateStatus();
+            });
+    connect(_client.get(), &Client::moveReceived,
+            this, &ModelAdapter::onOpponentMove);
+    connect(_client.get(), &Client::gameEnded,
+            this, &ModelAdapter::onGameEnded);
+    connect(_client.get(), &Client::error,
+            this, [this](const QString& error) {
+                emit gameMessage("Ошибка клиента: " + error);
+            });
+
+    if (_client->connectToServer(address, port)) {
+        _isClient = true;
+        _isServer = false;
+        _isConnected = false;
+        _isMyTurn = false;
+        _gameStarted = false;
+        emit gameModeChanged();
+        emit gameMessage("Подключение к серверу " + address + ":" +
+                         QString::number(port) + "...");
+        updateStatus();
+        return true;
+    }
+
+    return false;
+}
+
+void ModelAdapter::disconnectFromServer() {
+    if (_server) {
+        _server->stop();
+        _server.reset();
+    }
+    if (_client) {
+        _client->disconnect();
+        _client.reset();
+    }
+    _isServer = false;
+    _isClient = false;
+    _isConnected = false;
+    _isMyTurn = false;
+    _gameStarted = false;
+    _opponentReady = false;
+    emit gameModeChanged();
+    emit connectionStatusChanged();
+    emit gameMessage("Отключено от сервера");
+    updateStatus();
+}
+
+void ModelAdapter::setPlayerName(const QString& name) {
+    _playerName = name;
+    if (_client) {
+        _client->sendReady(name);
+    }
+}
+
+QString ModelAdapter::getPlayerName() const {
+    return _playerName;
+}
+
+void ModelAdapter::onConnected() {
+    _isConnected = true;
+    emit connectionStatusChanged();
+
+    if (_isServer) {
+        emit gameMessage("Противник подключился! Ожидание готовности...");
+    } else {
+        // Клиент отправляет готовность после подключения
+        if (_client) {
+            _client->sendReady(_playerName);
+        }
+        emit gameMessage("Подключено к серверу! Ожидание начала игры...");
+    }
+    updateStatus();
+}
+
+void ModelAdapter::onDisconnected() {
+    _isConnected = false;
+    _gameStarted = false;
+    emit connectionStatusChanged();
+    emit gameMessage("Соединение разорвано");
+
+    if (_isServer) {
+        _server.reset();
+    } else {
+        _client.reset();
+    }
+    _isServer = false;
+    _isClient = false;
+    emit gameModeChanged();
+    updateStatus();
+}
+
+void ModelAdapter::onOpponentReady() {
+    _opponentReady = true;
+    emit opponentReady();
+
+    if (_isServer) {
+        _isMyTurn = true;
+        _gameStarted = true;
+        emit turnChanged(true);
+        emit gameMessage("Противник готов! Вы начинаете первый ход.");
+
+        QJsonObject startMsg;
+        startMsg["type"] = "startGame";
+        _server->sendMove(startMsg);
+        updateStatus();
+    }
+}
+
+void ModelAdapter::onOpponentMove(const QJsonObject& move) {
+    if (!_gameStarted) {
+        return;
+    }
+
+    int index = move["index"].toInt();
+    bool hit = move["hit"].toBool();
+    bool destroyed = move["destroyed"].toBool();
+
+    processOpponentMove(index);
+
+    if (hit) {
+        emit gameMessage("Противник попал в вашу клетку!");
+        // Ход остаётся у противника
+    } else {
+        emit gameMessage("Противник промахнулся. Ваш ход!");
+        _isMyTurn = true;
+        emit turnChanged(true);
+    }
+
+    checkWinCondition();
+    updateStatus();
+}
+
+void ModelAdapter::processOpponentMove(int index) {
+    auto& field = const_cast<std::vector<Cell>&>(_model.getPlayingField());
+    if (index >= 0 && index < static_cast<int>(field.size())) {
+        auto& cell = field[index];
+        if (!cell._isShoted) {
+            cell._isShoted = true;
+
+            if (cell._isOccupied) {
+                for (const Ship& ship : _model.getShips()) {
+                    if (ship.isDestroyed()) {
+                        // Отмечаем все клетки вокруг уничтоженного корабля
+                        // Здесь можно добавить логику отметки
+                        break;
+                    }
+                }
+            }
+        }
+    }
+}
+
+void ModelAdapter::sendMoveToOpponent(int index, bool hit, bool destroyed) {
+    QJsonObject move;
+    move["index"] = index;
+    move["hit"] = hit;
+    move["destroyed"] = destroyed;
+
+    if (_server) {
+        _server->sendMove(move);
+    } else if (_client) {
+        _client->sendMove(move);
+    }
+}
+
+void ModelAdapter::onGameEnded(const QString& winner) {
+    _gameOver = true;
+    _gameStarted = false;
+    emit gameMessage("Игра окончена! Победитель: " + winner);
+
+    if (winner == _playerName) {
+        emit gameWon();
+    } else {
+        emit gameOver();
+    }
+    updateStatus();
+}
+
+void ModelAdapter::endGame(const QString& winner) {
+    if (_server) {
+        _server->sendGameEnded(winner);
+    }
+    onGameEnded(winner);
 }
 
 QString ModelAdapter::getBotGameStatus() {
+    if (!_gameStarted) {
+        return "Ожидание начала игры...";
+    }
+    if (_gameWon) return "🏆 ПОБЕДА!";
+    if (_gameOver) return "💀 ПОРАЖЕНИЕ";
+
+    int shipsDestroyed = 0;
+    int totalShips = _playerModel.getShips().size();
+
+    for (const Ship& ship : _playerModel.getShips()) {
+        if (ship.isDestroyed()) {
+            shipsDestroyed++;
+        }
+    }
+
+    return QString("Корабли уничтожены: %1 / %2").arg(shipsDestroyed).arg(totalShips);
+}
+
+QString ModelAdapter::getPlayerGameStatus() {
+    if (!_gameStarted) {
+        return "Ожидание начала игры...";
+    }
+    if (_gameWon) return "🏆 ПОБЕДА!";
+    if (_gameOver) return "💀 ПОРАЖЕНИЕ";
 
     int shipsDestroyed = 0;
     int totalShips = _model.getShips().size();
@@ -191,44 +400,44 @@ QString ModelAdapter::getBotGameStatus() {
     return QString("Корабли уничтожены: %1 / %2").arg(shipsDestroyed).arg(totalShips);
 }
 
-
-
-QString ModelAdapter::getPlayerGameStatus() {
-
-    int shipsDestroyed = 0;
-    int totalShips = _bot._model.getShips().size();
-
-    for (const Ship& ship : _bot._model.getShips()) {
-        if (ship.isDestroyed()) {
-            shipsDestroyed++;
-        }
+QString ModelAdapter::getGameStatusText() {
+    if (_isServer) {
+        return "Сервер" + QString(_isMyTurn ? " (Ваш ход)" : " (Ход противника)");
+    } else if (_isClient) {
+        return "Клиент" + QString(_isMyTurn ? " (Ваш ход)" : " (Ход противника)");
     }
-
-    return QString("Корабли уничтожены: %1 / %2").arg(shipsDestroyed).arg(totalShips);
+    return "Не подключен";
 }
 
-
-
+void ModelAdapter::updateStatus() {
+    emit gameStatusChanged();
+}
 
 void ModelAdapter::checkWinCondition() {
-    bool playerLost = _bot._model.isAllShipsIsDestroyed();  // Все корабли игрока уничтожены?
-    bool playerWon = _model.isAllShipsIsDestroyed();         // Все корабли бота уничтожены?
+    bool playerLost = _model.isAllShipsIsDestroyed();
+    bool playerWon = _playerModel.isAllShipsIsDestroyed();
 
     qDebug() << "checkWinCondition: playerLost =" << playerLost << "playerWon =" << playerWon;
 
     if (playerLost && !_gameOver) {
         _gameOver = true;
-        qDebug() << "BOT WINS! Game Over!";
-
-        emit gameStatusChanged();
-        emit gameOver();
+        _gameStarted = false;
+        qDebug() << "PLAYER LOST!";
+        if (_isServer) {
+            endGame("Противник");
+        } else if (_isClient) {
+            endGame("Противник");
+        }
         return;
     }
 
     if (playerWon && !_gameWon) {
         _gameWon = true;
-        qDebug() << "PLAYER WINS!";
-        emit gameWon();
-        emit gameStatusChanged();
+        _gameStarted = false;
+        qDebug() << "PLAYER WON!";
+        if (_isServer || _isClient) {
+            endGame(_playerName);
+        }
+        return;
     }
 }

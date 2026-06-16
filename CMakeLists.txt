@@ -1,11 +1,11 @@
 cmake_minimum_required(VERSION 3.16)
 
-project(sea_battle VERSION 0.1 LANGUAGES CXX)
+project(sea_battle_network VERSION 0.1 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_STANDARD 17)
 
-find_package(Qt6 REQUIRED COMPONENTS Quick Core)
+find_package(Qt6 REQUIRED COMPONENTS Quick Core Network)
 
 qt_standard_project_setup(REQUIRES 6.8)
 
@@ -13,6 +13,9 @@ qt_add_executable(appsea_battle
     main.cpp
     model_adapter.cpp
     model.cpp
+    network_manager.cpp
+    server.cpp
+    client.cpp
 )
 
 qt_add_qml_module(appsea_battle
@@ -26,8 +29,9 @@ qt_add_qml_module(appsea_battle
     model.hpp
     utils.hpp
     model_adapter.hpp
-    SOURCES bot.hpp
-    SOURCES bot.cpp
+    network_manager.hpp
+    server.hpp
+    client.hpp
     RESOURCES resources.qrc
 )
 
@@ -39,7 +43,7 @@ set_target_properties(appsea_battle PROPERTIES
 )
 
 target_link_libraries(appsea_battle
-    PRIVATE Qt6::Quick Qt6::Core
+    PRIVATE Qt6::Quick Qt6::Core Qt6::Network
 )
 
 include(GNUInstallDirs)
@@ -48,5 +52,3 @@ install(TARGETS appsea_battle
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
 )
-
-add_subdirectory(Test)
