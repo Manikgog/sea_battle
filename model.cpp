@@ -251,18 +251,14 @@ const std::vector<Ship>& Model::getShips() const {
 }
 
 
-int Model::getShipsAmount() const {
-    int ships_counter = 0;
+int Model::getDestroyedShipsAmount() const {
+    int destroyed_ships_counter = 0;
     for(const Ship& ship : _ships) {
-        std::vector<Cell*> cells = ship.getCells();
-        for(const Cell* cell : cells) {
-            if(!cell->_isShoted) {
-                ships_counter++;
-                break;
-            }
+        if(ship.isDestroyed()) {
+            destroyed_ships_counter++;
         }
     }
-    return ships_counter;
+    return destroyed_ships_counter;
 }
 
 

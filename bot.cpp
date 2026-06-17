@@ -108,51 +108,80 @@ void Bot::setHit(int index, bool is_desroyed) {
 
     if(is_desroyed) {
         // определяем положение корабля, вертикальное или горизонтальное
+        int row = index/10;
+        int first_index_in_row = row * 10;
+        int last_index_in_row = first_index_in_row + 9;
         int upper_index = index - 10;
         // идем вверх и отмечаем левые и правые клетки для исключения из дальнейшей стрельбы
-        for(int i = upper_index; i >= 0; --i) {
+        for(int i = upper_index; i >= 0; i-=10) {
             if(_shots[i]._isOccupied && _shots[i]._isShoted) {
+                row = i/10;
+                first_index_in_row = row * 10;
+                last_index_in_row = first_index_in_row + 9;
                 int left_index = i - 1;
+                if(left_index < first_index_in_row) {
+                    break;
+                }
                 if(left_index >= 0 && i%10 != 0) {
                     _shots[left_index]._isShoted = true;
                     playerField[left_index]._isShoted = true;
                 }
                 int right_index = i + 1;
+                if(right_index > last_index_in_row) {
+                    break;
+                }
                 if(right_index < _shots.size() && i%10 != 9) {
                     _shots[right_index]._isShoted = true;
                     playerField[right_index]._isShoted = true;
                 }
+                continue;
             }
-            if(!_shots[i]._isOccupied && !_shots[i]._isShoted) {
+            if(!_shots[i]._isOccupied) {
                 _shots[i]._isShoted = true;
                 playerField[i]._isShoted = true;
+                break;
             }
         }
 
         int lower_index = index + 10;
         // идём вниз и отмечаем левые и правые клетки для исключения из дальнейшей стрельбы
-        for(int i = lower_index; i < _shots.size(); ++i) {
+        for(int i = lower_index; i < _shots.size(); i+=10) {
             if(_shots[i]._isOccupied && _shots[i]._isShoted) {
+                row = i/10;
+                first_index_in_row = row * 10;
+                last_index_in_row = first_index_in_row + 9;
                 int left_index = i - 1;
+                if(left_index < first_index_in_row) {
+                    break;
+                }
                 if(left_index >= 0 && i%10 != 0) {
                     _shots[left_index]._isShoted = true;
                     playerField[left_index]._isShoted = true;
                 }
                 int right_index = i + 1;
+                if(right_index > last_index_in_row) {
+                    break;
+                }
                 if(right_index < _shots.size() && i%10 != 9) {
                     _shots[right_index]._isShoted = true;
                     playerField[right_index]._isShoted = true;
                 }
+                continue;
             }
-            if(!_shots[i]._isOccupied && !_shots[i]._isShoted) {
+            if(!_shots[i]._isOccupied) {
                 _shots[i]._isShoted = true;
                 playerField[i]._isShoted = true;
+                break;
             }
         }
 
+        row = index/10;
+        first_index_in_row = row * 10;
+        last_index_in_row = first_index_in_row + 9;
         // идём влево и отмечаем верхние и нижние клетки для исключения из дальнейшей стрельбы
         int left_index = index - 1;
-        for(int i = left_index; i >= 0; --i) {
+        for(int i = left_index; i >= first_index_in_row; --i) {
+
             if(_shots[i]._isOccupied && _shots[i]._isShoted) {
                 int up_index = i - 10;
                 if(up_index >= 0) {
@@ -164,16 +193,18 @@ void Bot::setHit(int index, bool is_desroyed) {
                     _shots[low_index]._isShoted = true;
                     playerField[low_index]._isShoted = true;
                 }
+                continue;
             }
-            if(!_shots[i]._isOccupied && !_shots[i]._isShoted) {
+            if(!_shots[i]._isOccupied) {
                 _shots[i]._isShoted = true;
                 playerField[i]._isShoted = true;
+                break;
             }
         }
 
         // идём вправо и отмечаем верхние и нижние клетки для исключения из дальнейшей стрельбы
         int right_index = index + 1;
-        for(int i = right_index; i < _shots.size(); ++i) {
+        for(int i = right_index; i <= last_index_in_row; ++i) {
             if(_shots[i]._isOccupied && _shots[i]._isShoted) {
                 int up_index = i - 10;
                 if(up_index >= 0) {
@@ -185,10 +216,12 @@ void Bot::setHit(int index, bool is_desroyed) {
                     _shots[low_index]._isShoted = true;
                     playerField[low_index]._isShoted = true;
                 }
+                continue;
             }
-            if(!_shots[i]._isOccupied && !_shots[i]._isShoted) {
+            if(!_shots[i]._isOccupied) {
                 _shots[i]._isShoted = true;
                 playerField[i]._isShoted = true;
+                break;
             }
         }
     }

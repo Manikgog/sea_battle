@@ -29,7 +29,7 @@ public:
     bool placingUp(int row, int column, int cells);
     bool placingDown(int row, int column, int cells);
     const std::vector<Ship>& getShips() const;
-    int getShipsAmount() const;
+    int getDestroyedShipsAmount() const;
     int getRows() {
         return _rows;
     }

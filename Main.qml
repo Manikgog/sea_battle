@@ -200,6 +200,15 @@ Window {
                     border.width: 2
                     radius: 5
 
+                    // затемнение поля игрока во время хода бота
+                    Rectangle {
+                        anchors.fill: parent
+                        color: "black"
+                        opacity: root.model.isPlayerFieldBlocked() ? 0.3 : 0
+                        visible: root.model.isPlayerFieldBlocked()
+                        z: 1
+                    }
+
                     Grid {
                         anchors.centerIn: parent
                         rows: 10
@@ -229,6 +238,7 @@ Window {
 
                                 MouseArea {
                                     anchors.fill: parent
+                                    enabled: !root.model.isPlayerFieldBlocked()
                                     onClicked: {
                                         if (root.model && !getCellIsShoted(index)) {
                                             root.model.shot(index);

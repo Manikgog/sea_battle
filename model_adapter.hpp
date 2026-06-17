@@ -29,6 +29,9 @@ class ModelAdapter : public QObject {
     Q_INVOKABLE void newGame();
     Q_INVOKABLE QString getBotGameStatus();
     Q_INVOKABLE QString getPlayerGameStatus();
+    Q_INVOKABLE bool isPlayerFieldBlocked() {
+        return _playerFieldBlocked;
+    }
 
   signals:
     void gameStatusChanged();
@@ -42,6 +45,7 @@ class ModelAdapter : public QObject {
     Bot     _bot;                 // бот, который содержит поле игрока
     bool    _gameWon;
     bool    _gameOver;
+    bool    _playerFieldBlocked = false;    // признак блокировки поля игрока
 };
 
 #endif // MODEL_ADAPTER_HPP

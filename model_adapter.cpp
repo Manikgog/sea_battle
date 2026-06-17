@@ -49,7 +49,7 @@ bool ModelAdapter::getPlayerCellIsShoted(int index)
 }
 
 void ModelAdapter::shot(int index) {
-    if (_gameWon || _gameOver) {
+    if (_gameWon || _gameOver || _playerFieldBlocked) {
         return;
     }
 
@@ -80,8 +80,14 @@ void ModelAdapter::shot(int index) {
 
         // Если игра не окончена, бот делает ответный ход
         if (!_gameWon && is_miss) {
+            _playerFieldBlocked = true;
+            emit gameStatusChanged();
             // Используем QTimer для небольшой задержки перед ходом бота
-            QTimer::singleShot(500, this, &ModelAdapter::botMove);
+            QTimer::singleShot(1000, this, [this]() {
+                botMove();
+                _playerFieldBlocked = false;
+                emit gameStatusChanged(); // Разблокируем UI
+            });
         }
 
     }
@@ -92,6 +98,8 @@ void ModelAdapter::shot(int index) {
 
 void ModelAdapter::botMove() {
     if (_gameWon || _gameOver) {
+        _playerFieldBlocked = false;
+        emit gameStatusChanged();
         return;
     }
 
@@ -103,12 +111,13 @@ void ModelAdapter::botMove() {
     if (index >= 0 && index < static_cast<int>(playerField.size())) {
         auto& cell = playerField[index];
         if (!cell._isShoted) {
-            int ships_alive_before = _model.getShipsAmount();
+            int destroyed_ships_before = _bot._model.getDestroyedShipsAmount();
             cell._isShoted = true;
 
             if (cell._isOccupied) {
-                int ships_alive_after = _model.getShipsAmount();
-                if(ships_alive_before > ships_alive_after) {
+                int destroyed_ships_after = _bot._model.getDestroyedShipsAmount();
+
+                if(destroyed_ships_after > destroyed_ships_before) {
                     _bot.setHit(index, true);
                 } else {
                     _bot.setHit(index);
@@ -118,9 +127,20 @@ void ModelAdapter::botMove() {
                 emit gameStatusChanged();
                 checkWinCondition();
 
-                botMove();
+                // Если бот попал и игра не окончена, делаем еще один ход с задержкой
+                if (!_gameWon && !_gameOver) {
+                    QTimer::singleShot(500, this, [this]() {
+                        botMove();
+                    });
+                } else {
+                    _playerFieldBlocked = false;
+                    emit gameStatusChanged();
+                }
             } else {
                 qDebug() << "Bot MISS at player cell:" << index;
+                emit gameStatusChanged();
+                // После промаха разблокируем поле
+                _playerFieldBlocked = false;
                 emit gameStatusChanged();
             }
         }
