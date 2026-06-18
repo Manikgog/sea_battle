@@ -1,0 +1,57 @@
+#ifndef MESSENGERBACKEND_H
+#define MESSENGERBACKEND_H
+
+#include <QObject>
+#include <QString>
+#include <QList>
+#include <QDateTime>
+#include "network_manager.h"
+
+struct Message {
+    QString sender;
+    QString text;
+    QDateTime timestamp;
+};
+
+class MessengerBackend : public QObject
+{
+    Q_OBJECT
+    Q_PROPERTY(QString currentUser READ currentUser WRITE setCurrentUser NOTIFY currentUserChanged)
+    Q_PROPERTY(QStringList messages READ messages NOTIFY messagesChanged)
+    Q_PROPERTY(QStringList messageSenders READ messageSenders NOTIFY messagesChanged)
+    Q_PROPERTY(QStringList messageTimes READ messageTimes NOTIFY messagesChanged)
+    Q_PROPERTY(NetworkManager* networkManager READ networkManager CONSTANT)
+    Q_PROPERTY(bool isConnected READ isConnected NOTIFY isConnectedChanged)
+
+  public:
+    explicit MessengerBackend(QObject *parent = nullptr);
+
+    QString currentUser() const;
+    void setCurrentUser(const QString &user);
+
+    QStringList messages() const;
+    QStringList messageSenders() const;
+    QStringList messageTimes() const;
+    NetworkManager* networkManager() const { return m_networkManager; }
+    bool isConnected() const { return m_networkManager->isConnected(); }
+
+  public slots:
+    void sendMessage(const QString &text);
+    void receiveMessage(const QString &sender, const QString &text);
+
+  signals:
+    void currentUserChanged();
+    void messagesChanged();
+    void newMessageReceived(const QString &sender, const QString &text);
+    void isConnectedChanged();
+
+  private slots:
+    void onMessageReceived(const QString &sender, const QString &text);
+
+  private:
+    QString m_currentUser;
+    QList<Message> m_messages;
+    NetworkManager *m_networkManager;
+};
+
+#endif // MESSENGERBACKEND_H
