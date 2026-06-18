@@ -1,6 +1,0 @@
-/home/mak/test_projects/Sea_battle/sea_battle/Test/build/Desktop-Debug/CMakeFiles/Test.dir
-/home/mak/test_projects/Sea_battle/sea_battle/Test/build/Desktop-Debug/CMakeFiles/test.dir
-/home/mak/test_projects/Sea_battle/sea_battle/Test/build/Desktop-Debug/CMakeFiles/edit_cache.dir
-/home/mak/test_projects/Sea_battle/sea_battle/Test/build/Desktop-Debug/CMakeFiles/rebuild_cache.dir
-/home/mak/test_projects/Sea_battle/sea_battle/Test/build/Desktop-Debug/CMakeFiles/Test_autogen_timestamp_deps.dir
-/home/mak/test_projects/Sea_battle/sea_battle/Test/build/Desktop-Debug/CMakeFiles/Test_autogen.dir
