@@ -24,23 +24,23 @@ int Bot::shoot() {
         return search_result.value();
     }
 
-    for(int i = 0; i < 100; i+=11) {
-        if(_shots[i]._isShoted || _shots[i]._isOccupied) {
-            continue;
-        } else {
-            _shots[i]._isShoted = true;
-            return i;
-        }
-    }
+    // for(int i = 0; i < 100; i+=11) {
+    //     if(_shots[i]._isShoted || _shots[i]._isOccupied) {
+    //         continue;
+    //     } else {
+    //         _shots[i]._isShoted = true;
+    //         return i;
+    //     }
+    // }
 
-    for(int i = 9; i < 100; i+=9) {
-        if(_shots[i]._isShoted || _shots[i]._isOccupied) {
-            continue;
-        } else {
-            _shots[i]._isShoted = true;
-            return i;
-        }
-    }
+    // for(int i = 9; i < 100; i+=9) {
+    //     if(_shots[i]._isShoted || _shots[i]._isOccupied) {
+    //         continue;
+    //     } else {
+    //         _shots[i]._isShoted = true;
+    //         return i;
+    //     }
+    // }
 
 
     int index = getRandomNumber(0, _shots.size()-1);
