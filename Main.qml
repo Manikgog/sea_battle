@@ -6,7 +6,7 @@ import QtQuick.Dialogs
 Window {
     id: root
     width: 600
-    height: 450
+    height: 500
     visible: true
     title: qsTr("Морской бой")
 
@@ -59,7 +59,30 @@ Window {
     ColumnLayout {
         anchors.fill: parent
         anchors.margins: 20
-        spacing: 20
+        spacing: 10
+
+        // Индикатор чей ход
+        Rectangle {
+            id: turnIndicatorRect
+            Layout.alignment: Qt.AlignHCenter
+            Layout.preferredWidth: 400
+            Layout.preferredHeight: 40
+            color: "#3498db"
+            radius: 10
+            border.color: "#2c3e50"
+            border.width: 2
+
+            Text {
+                id: turnIndicatorText
+                anchors.centerIn: parent
+                text: root.model ? root.model.getTurnStatus() : ""
+                font.pixelSize: 20
+                font.bold: true
+                color: "white"
+                horizontalAlignment: Text.AlignHCenter
+            }
+        }
+
 
         RowLayout {
             spacing: 40
@@ -240,7 +263,7 @@ Window {
                                     anchors.fill: parent
                                     enabled: !root.model.isPlayerFieldBlocked()
                                     onClicked: {
-                                        if (root.model && !getCellIsShoted(index)) {
+                                        if (root.model && !getCellIsShoted(index) && !root.model.isPlayerFieldBlocked()) {
                                             root.model.shot(index);
                                             root.updateBotCell(index);
                                             botStatusText.text = root.model.getBotGameStatus();
@@ -350,6 +373,8 @@ Window {
                 gameMessageDialog.title = "Победа!"
                 gameMessageDialog.text = "🎉 ПОЗДРАВЛЯЕМ! 🎉\nВы уничтожили все корабли противника!"
                 gameMessageDialog.open()
+                // Обновляем статус хода
+                turnIndicator.text = root.model.getTurnStatus()
             }
 
             function onGameOver() {
@@ -358,24 +383,47 @@ Window {
                 gameMessageDialog.title = "Игра окончена"
                 gameMessageDialog.text = "😢 Вы проиграли!\nВсе ваши корабли уничтожены."
                 gameMessageDialog.open()
+                // Обновляем статус хода
+                turnIndicator.text = root.model.getTurnStatus()
             }
 
             function onGameStatusChanged() {
                 botStatusText.text = root.model.getBotGameStatus()
                 botStatusText.color = "#2c3e50"
+                playerStatusText.text = root.model.getPlayerGameStatus()
                 // Обновляем поле бота при изменении статуса (после хода бота)
                 for (var i = 0; i < 100; i++) {
                     root.updateBotCell(i);
                     root.updatePlayerCell(i);
                 }
             }
+
+            function onTurnStatusChanged() {
+                // Обновляем индикатор хода
+                turnIndicator.text = root.model.getTurnStatus()
+                // Меняем цвет индикатора в зависимости от статуса
+                var status = root.model.getTurnStatus()
+                if (status.includes("ПОБЕДА")) {
+                    turnIndicator.color = "#27ae60"
+                } else if (status.includes("ПРОИГРАЛИ")) {
+                    turnIndicator.color = "#e74c3c"
+                } else if (status.includes("Ход бота")) {
+                    turnIndicator.color = "#f39c12"
+                } else {
+                    turnIndicator.color = "white"
+                }
+            }
         }
     }
+
+    // Сохраняем ссылку на индикатор для обновления
+    property alias turnIndicator: turnIndicatorText
 
     Component.onCompleted: {
         if (root.model) {
             botStatusText.text = root.model.getBotGameStatus();
             playerStatusText.text = root.model.getPlayerGameStatus();
+            turnIndicator.text = root.model.getTurnStatus();
         }
     }
 }

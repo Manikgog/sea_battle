@@ -12,7 +12,12 @@ ModelAdapter::ModelAdapter(QObject *parent)
         , _gameOver(false){
     _model.automaticShipsPlacing();
     _bot._model.automaticShipsPlacing();
+    updateTurnStatus();
 }
+
+
+
+
 
 bool ModelAdapter::getBotCellIsShoted(int index) {
     //qDebug() << __FUNCTION__ << "index =" << index;
@@ -22,6 +27,9 @@ bool ModelAdapter::getBotCellIsShoted(int index) {
     return _model.getPlayingField()[index]._isShoted;
 }
 
+
+
+
 bool ModelAdapter::getBotCellIsOccupied(int index) {
     if (index < 0 || index >= _model.getPlayingField().size()) {
         return false;
@@ -29,6 +37,10 @@ bool ModelAdapter::getBotCellIsOccupied(int index) {
     //qDebug() << __FUNCTION__ << "index =" << index;
     return _model.getPlayingField()[index]._isOccupied;
 }
+
+
+
+
 
 bool ModelAdapter::getPlayerCellIsOccupied(int index)
 {
@@ -39,6 +51,10 @@ bool ModelAdapter::getPlayerCellIsOccupied(int index)
     return _bot._model.getPlayingField()[index]._isOccupied;
 }
 
+
+
+
+
 bool ModelAdapter::getPlayerCellIsShoted(int index)
 {
     if (index < 0 || index >= _bot._model.getPlayingField().size()) {
@@ -48,6 +64,13 @@ bool ModelAdapter::getPlayerCellIsShoted(int index)
     return _bot._model.getPlayingField()[index]._isShoted;
 }
 
+
+
+
+/**
+ * @brief ModelAdapter::shot метод вызываемый при клике мышки игроком по полю бота
+ * @param index
+ */
 void ModelAdapter::shot(int index) {
     if (_gameWon || _gameOver || _playerFieldBlocked) {
         return;
@@ -81,15 +104,23 @@ void ModelAdapter::shot(int index) {
         // Если игра не окончена, бот делает ответный ход
         if (!_gameWon && is_miss) {
             _playerFieldBlocked = true;
+            _turnStatus = "Ход бота...";
+            emit turnStatusChanged();
             emit gameStatusChanged();
             // Используем QTimer для небольшой задержки перед ходом бота
             QTimer::singleShot(1000, this, [this]() {
                 botMove();
                 _playerFieldBlocked = false;
+                _turnStatus = "Ваш ход";
+                emit turnStatusChanged();
                 emit gameStatusChanged(); // Разблокируем UI
             });
+        } else if(!_gameWon && !is_miss) {
+            // Если попал, ход остается за игроком
+            _turnStatus = "Ваш ход (попадание!)";
+            emit turnStatusChanged();
+            emit gameStatusChanged();
         }
-
     }
 }
 
@@ -99,6 +130,8 @@ void ModelAdapter::shot(int index) {
 void ModelAdapter::botMove() {
     if (_gameWon || _gameOver) {
         _playerFieldBlocked = false;
+        _turnStatus = "Ваш ход";
+        emit turnStatusChanged();
         emit gameStatusChanged();
         return;
     }
@@ -123,25 +156,43 @@ void ModelAdapter::botMove() {
                     _bot.setHit(index);
                 }
                 qDebug() << "Bot HIT at player cell:" << index;
-                // Если бот попал, он может сделать еще один ход
-                emit gameStatusChanged();
+
                 checkWinCondition();
 
                 // Если бот попал и игра не окончена, делаем еще один ход с задержкой
                 if (!_gameWon && !_gameOver) {
+                    _turnStatus = "Ход бота (попадание!)";
+                    emit turnStatusChanged();
+                    emit gameStatusChanged();
                     QTimer::singleShot(500, this, [this]() {
                         botMove();
                     });
                 } else {
                     _playerFieldBlocked = false;
+                    _turnStatus = "Игра окончена";
+                    emit turnStatusChanged();
                     emit gameStatusChanged();
                 }
             } else {
                 qDebug() << "Bot MISS at player cell:" << index;
-                emit gameStatusChanged();
-                // После промаха разблокируем поле
-                _playerFieldBlocked = false;
-                emit gameStatusChanged();
+                checkWinCondition();
+                if (!_gameWon && !_gameOver) {
+                    // После промаха ход переходит к игроку
+                    _playerFieldBlocked = false;
+                    _turnStatus = "Ваш ход";
+                    emit turnStatusChanged();
+                    emit gameStatusChanged();
+                } else {
+                    // Если игра окончена, обновляем статус
+                    _playerFieldBlocked = false;
+                    if (_gameWon) {
+                        _turnStatus = "🏆 ПОБЕДА! 🏆";
+                    } else if (_gameOver) {
+                        _turnStatus = "💀 ВЫ ПРОИГРАЛИ! 💀";
+                    }
+                    emit turnStatusChanged();
+                    emit gameStatusChanged();
+                }
             }
         }
     }
@@ -157,6 +208,9 @@ void ModelAdapter::newGame() {
     _bot._model.automaticShipsPlacing();
     _gameWon = false;
     _gameOver = false;
+    _playerFieldBlocked = false;
+    _turnStatus = "Ваш ход";
+    /*
     qDebug() << __FUNCTION__;
     std::cout << "Поле бота:" << std::endl;
     for(int i = 0; i < _model.getPlayingField().size(); ++i) {
@@ -193,9 +247,17 @@ void ModelAdapter::newGame() {
     }
     std::cout << std::endl;
     std::cout << std::endl;
-
+    */
+    emit turnStatusChanged();
     emit gameStatusChanged();
 }
+
+
+QString ModelAdapter::getTurnStatus() {
+    qDebug() << __FUNCTION__ << "_turnStatus =>" << _turnStatus;
+    return _turnStatus;
+}
+
 
 QString ModelAdapter::getBotGameStatus() {
 
@@ -238,8 +300,10 @@ void ModelAdapter::checkWinCondition() {
 
     if (playerLost && !_gameOver) {
         _gameOver = true;
+        _playerFieldBlocked = false;
         qDebug() << "BOT WINS! Game Over!";
-
+        _turnStatus = "💀 ВЫ ПРОИГРАЛИ! 💀";
+        emit turnStatusChanged();
         emit gameStatusChanged();
         emit gameOver();
         return;
@@ -248,7 +312,26 @@ void ModelAdapter::checkWinCondition() {
     if (playerWon && !_gameWon) {
         _gameWon = true;
         qDebug() << "PLAYER WINS!";
+        _playerFieldBlocked = false;
+        _turnStatus = "🏆 ПОБЕДА! 🏆";
+        emit turnStatusChanged();
+        qDebug() << "PLAYER WINS!";
         emit gameWon();
         emit gameStatusChanged();
     }
+}
+
+
+
+void ModelAdapter::updateTurnStatus() {
+    if (_gameWon) {
+        _turnStatus = "🏆 ПОБЕДА! 🏆";
+    } else if (_gameOver) {
+        _turnStatus = "💀 ВЫ ПРОИГРАЛИ! 💀";
+    } else if (_playerFieldBlocked) {
+        _turnStatus = "Ход бота...";
+    } else {
+        _turnStatus = "Ваш ход";
+    }
+    emit turnStatusChanged();
 }

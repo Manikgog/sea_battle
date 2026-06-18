@@ -32,20 +32,24 @@ class ModelAdapter : public QObject {
     Q_INVOKABLE bool isPlayerFieldBlocked() {
         return _playerFieldBlocked;
     }
+    Q_INVOKABLE QString getTurnStatus();
 
   signals:
     void gameStatusChanged();
     void gameWon();
     void gameOver();
+    void turnStatusChanged();
 
   private:
     void checkWinCondition();
+    void updateTurnStatus();
 
     Model   _model;               // поле бота
     Bot     _bot;                 // бот, который содержит поле игрока
     bool    _gameWon;
     bool    _gameOver;
     bool    _playerFieldBlocked = false;    // признак блокировки поля игрока
+    QString _turnStatus = "Ваш ход";        // текущий статус хода
 };
 
 #endif // MODEL_ADAPTER_HPP
