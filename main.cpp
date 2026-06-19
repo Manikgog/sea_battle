@@ -1,7 +1,7 @@
 #include <QGuiApplication>
 #include <QQmlApplicationEngine>
 #include <QQmlContext>
-#include "messenger_backend.h"
+#include "messenger_backend.hpp"
 
 int main(int argc, char *argv[])
 {

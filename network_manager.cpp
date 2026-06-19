@@ -1,4 +1,4 @@
-#include "network_manager.h"
+#include "network_manager.hpp"
 #include <QDebug>
 #include <QHostInfo>
 #include <QNetworkInterface>

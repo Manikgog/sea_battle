@@ -10,10 +10,19 @@ qt_standard_project_setup(REQUIRES 6.8)
 
 qt_add_executable(appsea_battle_network_version
     main.cpp
-    messenger_backend.h
+    messenger_backend.hpp
     messenger_backend.cpp
-    network_manager.h
+    network_manager.hpp
     network_manager.cpp
+    model_adapter.hpp
+    model_adapter.cpp
+    model.hpp
+    ship.hpp
+    cell.hpp
+    model.cpp
+    utils.hpp
+
+
 )
 
 qt_add_qml_module(appsea_battle_network_version
@@ -22,6 +31,13 @@ qt_add_qml_module(appsea_battle_network_version
     QML_FILES
         Main.qml
         MessegeDelegate.qml
+        SOURCES model_adapter.hpp
+        SOURCES model.hpp
+        SOURCES ship.hpp
+        SOURCES cell.hpp
+        SOURCES model.cpp
+        SOURCES utils.hpp
+        SOURCES model_adapter.cpp
 )
 
 qt_add_resources(appsea_battle_network_version "qml_resources"

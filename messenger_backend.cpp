@@ -1,4 +1,4 @@
-#include "messenger_backend.h"
+#include "messenger_backend.hpp"
 #include <QDebug>
 #include <QTimer>
 
@@ -6,6 +6,7 @@ MessengerBackend::MessengerBackend(QObject *parent)
     : QObject(parent)
       , m_currentUser("Абонент")
       , m_networkManager(new NetworkManager(this))
+      , m_gameModel(new ModelAdapter(this))
 {
     connect(m_networkManager, &NetworkManager::messageReceived,
             this, &MessengerBackend::onMessageReceived);
@@ -56,6 +57,7 @@ QStringList MessengerBackend::messageTimes() const
     }
     return result;
 }
+
 
 void MessengerBackend::sendMessage(const QString &text)
 {

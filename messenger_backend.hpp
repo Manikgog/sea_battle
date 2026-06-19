@@ -5,7 +5,8 @@
 #include <QString>
 #include <QList>
 #include <QDateTime>
-#include "network_manager.h"
+#include "network_manager.hpp"
+#include "model_adapter.hpp"
 
 struct Message {
     QString sender;
@@ -22,6 +23,7 @@ class MessengerBackend : public QObject
     Q_PROPERTY(QStringList messageTimes READ messageTimes NOTIFY messagesChanged)
     Q_PROPERTY(NetworkManager* networkManager READ networkManager CONSTANT)
     Q_PROPERTY(bool isConnected READ isConnected NOTIFY isConnectedChanged)
+    Q_PROPERTY(ModelAdapter* gameModel READ gameModel CONSTANT)
 
   public:
     explicit MessengerBackend(QObject *parent = nullptr);
@@ -34,6 +36,7 @@ class MessengerBackend : public QObject
     QStringList messageTimes() const;
     NetworkManager* networkManager() const { return m_networkManager; }
     bool isConnected() const { return m_networkManager->isConnected(); }
+    Q_INVOKABLE ModelAdapter* gameModel() const { return m_gameModel; }
 
   public slots:
     void sendMessage(const QString &text);
@@ -49,9 +52,10 @@ class MessengerBackend : public QObject
     void onMessageReceived(const QString &sender, const QString &text);
 
   private:
-    QString m_currentUser;
-    QList<Message> m_messages;
-    NetworkManager *m_networkManager;
+    QString         m_currentUser;
+    QList<Message>  m_messages;
+    NetworkManager  *m_networkManager;
+    ModelAdapter    *m_gameModel;
 };
 
 #endif // MESSENGERBACKEND_H

@@ -18,7 +18,7 @@ Item {
             right: isOwnMessage ? parent.right : undefined
             margins: 10
         }
-        width: Math.min(parent.width * 0.7, messageColumn.width + 30)
+        width: Math.min(parent.width * 0.7, 300)
         height: messageColumn.height + 20
         color: isOwnMessage ? "#2196F3" : "white"
         radius: 12
