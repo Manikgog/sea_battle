@@ -6,16 +6,18 @@ import MessengerApp 1.0
 ApplicationWindow {
     id: root
     width: 600
-    height: 900  // Увеличил высоту для размещения полей
+    height: 900
     visible: true
     title: "Морской бой"
 
-    property var model: backend.gameModel  // Исправлено: используем модель из бэкенда
+    property var model: backend.gameModel
     property string currentUser: backend.currentUser
     property bool isConnected: backend.isConnected
+    property bool isServer: false
+    property bool clientReady: false
 
     // Функция для обновления конкретной клетки поля бота
-    function updateBotCell(index) {
+    function updateEnemyCell(index) {
         var item = botGridRepeater.itemAt(index);
         if (item) {
             item.color = item.getCellColor(index);
@@ -168,7 +170,12 @@ ApplicationWindow {
                         model: ["Клиент", "Сервер"]
                         currentIndex: 0
                         onCurrentIndexChanged: {
+                            root.isServer = currentIndex === 1
                             backend.networkManager.isServer = currentIndex === 1
+                            // Сбрасываем состояние готовности при смене роли
+                            root.clientReady = false
+                            // Обновляем состояние кнопки
+                            updateGameButtonState()
                         }
                     }
 
@@ -195,6 +202,8 @@ ApplicationWindow {
                         onClicked: {
                             if (backend.isConnected) {
                                 backend.networkManager.disconnectFromHost()
+                                root.clientReady = false
+                                updateGameButtonState()
                             } else {
                                 if (modeCombo.currentIndex === 0) {
                                     backend.networkManager.connectToHost(addressField.text, 8080)
@@ -247,7 +256,7 @@ ApplicationWindow {
                 spacing: 40
                 Layout.alignment: Qt.AlignHCenter
 
-//////////////////////////////////////////////// Поле игрока \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
+                // Поле игрока
                 Column {
                     spacing: 10
                     Text {
@@ -383,7 +392,6 @@ ApplicationWindow {
                         onClicked: {
                             if (root.model) {
                                 root.model.shipPlacing();
-                                // Обновляем все клетки
                                 root.updateAllCells();
                                 playerStatusText.text = root.model.getPlayerGameStatus();
                                 turnIndicatorText.text = root.model.getTurnStatus();
@@ -392,7 +400,7 @@ ApplicationWindow {
                     }
                 }
 
-//////////////////////////////////////// Поле противника \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
+                // Поле противника
                 Column {
                     spacing: 10
                     Text {
@@ -412,7 +420,6 @@ ApplicationWindow {
                         border.width: 2
                         radius: 5
 
-                        // Затемнение поля противника во время хода противника
                         Rectangle {
                             anchors.fill: parent
                             color: "black"
@@ -452,27 +459,21 @@ ApplicationWindow {
                                         anchors.fill: parent
                                         enabled: root.model && !root.model.isPlayerFieldBlocked()
                                         onClicked: {
-                                            if (root.model && !getCellIsShoted(index) && !root.model.isPlayerFieldBlocked()) {
-                                                root.model.shot(index);
-                                                root.updateBotCell(index);
-                                                botStatusText.text = root.model.getBotGameStatus();
-                                                playerStatusText.text = root.model.getPlayerGameStatus();
-                                                turnIndicatorText.text = root.model.getTurnStatus();
-                                            }
+                                            backend.shotMessage(index)
                                         }
                                     }
 
-                                    function getEnemyCellIsShoted(cellIndex) {
+                                    function getCellIsShoted(cellIndex) {
                                         if (!root.model) return false;
                                         return root.model.getBotCellIsShoted(cellIndex);
                                     }
 
-                                    function getEnemyCellIsOccupied(cellIndex) {
+                                    function getCellIsOccupied(cellIndex) {
                                         if (!root.model) return false;
                                         return root.model.getBotCellIsOccupied(cellIndex);
                                     }
 
-                                    function getEnemyCellMark(cellIndex) {
+                                    function getCellMark(cellIndex) {
                                         if (!root.model) return "";
                                         if (root.model.getEnemyCellIsShoted(cellIndex)) {
                                             if (root.model.getEnemyCellIsOccupied(cellIndex)) {
@@ -484,7 +485,7 @@ ApplicationWindow {
                                         return "";
                                     }
 
-                                    function getEnemyMarkColor(cellIndex) {
+                                    function getMarkColor(cellIndex) {
                                         if (!root.model) return "black";
                                         if (root.model.getEnemyCellIsOccupied(cellIndex)) {
                                             return "red";
@@ -492,7 +493,7 @@ ApplicationWindow {
                                         return "black";
                                     }
 
-                                    function getEnemyCellColor(cellIndex) {
+                                    function getCellColor(cellIndex) {
                                         if (!root.model) return "#ecf0f1";
                                         if (root.model.getEnemyCellIsShoted(cellIndex)) {
                                             if (root.model.getEnemyCellIsOccupied(cellIndex)) {
@@ -524,11 +525,71 @@ ApplicationWindow {
                             color: "#2c3e50"
                         }
                     }
+
+                    Button {
+                        id: gameButton
+                        Layout.preferredWidth: 80
+                        Layout.preferredHeight: 40
+                        text: root.isServer ? "Начать игру" : "Готов"
+                        enabled: {
+                            if (root.isServer) {
+                                return backend.isConnected && root.clientReady
+                            } else {
+                                return backend.isConnected && !root.clientReady
+                            }
+                        }
+
+                        background: Rectangle {
+                            color: parent.enabled ? "#2196F3" : "#b0bec5"
+                            radius: 5
+                        }
+
+                        contentItem: Text {
+                            text: parent.text
+                            color: "white"
+                            font.pixelSize: 14
+                            font.bold: true
+                            horizontalAlignment: Text.AlignHCenter
+                            verticalAlignment: Text.AlignVCenter
+                        }
+
+                        onClicked: {
+                            if (root.isServer) {
+                                if (root.model) {
+                                    backend.sendMessage("game_start")
+                                    playerStatusText.text = root.model.getPlayerGameStatus();
+                                    turnIndicatorText.text = root.model.getTurnStatus();
+                                    root.clientReady = false
+                                    updateGameButtonState()
+                                    root.model.setTurnStatus(turnIndicatorText.text)
+                                }
+                            } else {
+                                root.clientReady = true
+                                backend.sendMessage("player_ready")
+                                backend.receiveMessage("Система", "Вы готовы к игре. Ожидайте начала.")
+                                updateGameButtonState()
+                                playerStatusText.text = root.model.getPlayerGameStatus();
+                                turnIndicatorText.text = root.model.getTurnStatus();
+                                root.model.setTurnStatus(turnIndicatorText.text)
+                            }
+                        }
+                    }
+
+                    // Функция обновления состояния кнопки внутри области видимости
+                    function updateGameButtonState() {
+                        if (root.isServer) {
+                            gameButton.text = "Начать игру"
+                            gameButton.enabled = backend.isConnected && root.clientReady
+                        } else {
+                            gameButton.text = "Готов"
+                            gameButton.enabled = backend.isConnected && !root.clientReady
+                        }
+                    }
                 }
             }
         }
 
-        // Список сообщений (уменьшенная высота)
+        // Список сообщений
         Rectangle {
             Layout.fillWidth: true
             Layout.preferredHeight: 150
@@ -687,69 +748,132 @@ ApplicationWindow {
                 }
             }
         }
-        Connections {
-                target: root.model
+    }
 
-                function onPlayerFieldUpdated() {
-                    root.updateAllCells();
-                }
-
-                function onGameWon() {
-                    botStatusText.text = "🏆 ПОБЕДА! 🏆\nВсе корабли противника уничтожены!"
-                    botStatusText.color = "#e74c3c"
-                    gameMessageDialog.title = "Победа!"
-                    gameMessageDialog.text = "🎉 ПОЗДРАВЛЯЕМ! 🎉\nВы уничтожили все корабли противника!"
-                    gameMessageDialog.open()
-                    // Обновляем статус хода
-                    turnIndicator.text = root.model.getTurnStatus()
-                }
-
-                function onGameOver() {
-                    playerStatusText.text = "ВЫ ПРОИГРАЛИ! 💀\nВсе ваши корабли уничтожены!"
-                    playerStatusText.color = "black"
-                    gameMessageDialog.title = "Игра окончена"
-                    gameMessageDialog.text = "😢 Вы проиграли!\nВсе ваши корабли уничтожены."
-                    gameMessageDialog.open()
-                    // Обновляем статус хода
-                    turnIndicator.text = root.model.getTurnStatus()
-                }
-
-                function onGameStatusChanged() {
-                    botStatusText.text = root.model.getBotGameStatus()
-                    botStatusText.color = "#2c3e50"
-                    playerStatusText.text = root.model.getPlayerGameStatus()
-                    for (var i = 0; i < 100; i++) {
-                        root.updatePlayerCell(i);
+    // Обработка сообщений от других игроков
+    Connections {
+        target: backend
+        function onNewMessageReceived(sender, text) {
+            if (sender !== backend.currentUser) {
+                if (text === "player_ready") {
+                    root.clientReady = true
+                    // Используем вызов через gameButton.updateGameButtonState если доступно
+                    if (gameButton && gameButton.updateGameButtonState) {
+                        gameButton.updateGameButtonState()
                     }
-                }
-
-                function onTurnStatusChanged() {
-                    // Обновляем индикатор хода
-                    turnIndicator.text = root.model.getTurnStatus()
-                    // Меняем цвет индикатора в зависимости от статуса
-                    var status = root.model.getTurnStatus()
-                    if (status.includes("ПОБЕДА")) {
-                        turnIndicator.color = "#27ae60"
-                    } else if (status.includes("ПРОИГРАЛИ")) {
-                        turnIndicator.color = "#e74c3c"
-                    } else if (status.includes("Ход бота")) {
-                        turnIndicator.color = "#f39c12"
-                    } else {
-                        turnIndicator.color = "white"
+                    backend.receiveMessage("Система", "Противник готов к игре!")
+                } else if (text === "game_start") {
+                    if (root.model) {
+                        root.model.shipPlacing()
+                        root.updateAllCells()
+                        playerStatusText.text = root.model.getPlayerGameStatus()
+                        turnIndicatorText.text = root.model.getTurnStatus()
+                        backend.receiveMessage("Система", "Игра началась! Ваш ход.")
                     }
                 }
             }
         }
+    }
 
-    // Сохраняем ссылку на индикатор для обновления
-    property alias turnIndicator: turnIndicatorText
+    Connections {
+        target: root.model
 
-    Component.onCompleted: {
-        if (root.model) {
-            botStatusText.text = root.model.getBotGameStatus();
-            playerStatusText.text = root.model.getPlayerGameStatus();
-            turnIndicator.text = root.model.getTurnStatus();
+        function onPlayerFieldUpdated() {
+            root.updateAllCells();
+        }
+
+        function onGameWon() {
+            botStatusText.text = "🏆 ПОБЕДА! 🏆\nВсе корабли противника уничтожены!"
+            botStatusText.color = "#e74c3c"
+            gameMessageDialog.title = "Победа!"
+            gameMessageDialog.text = "🎉 ПОЗДРАВЛЯЕМ! 🎉\nВы уничтожили все корабли противника!"
+            gameMessageDialog.open()
+            turnIndicatorText.text = root.model.getTurnStatus()
+        }
+
+        function onGameOver() {
+            playerStatusText.text = "ВЫ ПРОИГРАЛИ! 💀\nВсе ваши корабли уничтожены!"
+            playerStatusText.color = "black"
+            gameMessageDialog.title = "Игра окончена"
+            gameMessageDialog.text = "😢 Вы проиграли!\nВсе ваши корабли уничтожены."
+            gameMessageDialog.open()
+            turnIndicatorText.text = root.model.getTurnStatus()
+        }
+
+        function onGameStatusChanged() {
+            botStatusText.text = root.model.getEnemyGameStatus()
+            botStatusText.color = "#2c3e50"
+            playerStatusText.text = root.model.getPlayerGameStatus()
+            for (var i = 0; i < 100; i++) {
+                root.updatePlayerCell(i);
+                root.updateEnemyCell(i);
+            }
+        }
+
+        function onTurnStatusChanged() {
+            turnIndicatorText.text = root.model.getTurnStatus()
+            var status = root.model.getTurnStatus()
+            if (status.includes("ПОБЕДА")) {
+                turnIndicatorRect.color = "#27ae60"
+            } else if (status.includes("ПРОИГРАЛИ")) {
+                turnIndicatorRect.color = "#e74c3c"
+            } else if (status.includes("Ход бота")) {
+                turnIndicatorRect.color = "#f39c12"
+            } else {
+                turnIndicatorRect.color = "#3498db"
+            }
         }
     }
 
+    Component.onCompleted: {
+        if (root.model) {
+            botStatusText.text = root.model.getEnemyGameStatus();
+            playerStatusText.text = root.model.getPlayerGameStatus();
+            turnIndicatorText.text = root.model.getTurnStatus();
+        }
+        // Инициализируем состояние кнопки
+        if (gameButton && gameButton.updateGameButtonState) {
+            gameButton.updateGameButtonState()
+        }
+    }
+
+    // Диалог для уведомлений
+    Dialog {
+        id: gameMessageDialog
+        modal: true
+        anchors.centerIn: parent
+        width: 300
+        height: 200
+
+        ColumnLayout {
+            anchors.fill: parent
+            anchors.margins: 20
+            spacing: 15
+
+            Text {
+                id: dialogTitle
+                text: gameMessageDialog.title
+                font.pixelSize: 18
+                font.bold: true
+                horizontalAlignment: Text.AlignHCenter
+                Layout.fillWidth: true
+            }
+
+            Text {
+                id: dialogText
+                text: gameMessageDialog.text
+                font.pixelSize: 14
+                horizontalAlignment: Text.AlignHCenter
+                wrapMode: Text.WordWrap
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+            }
+
+            Button {
+                text: "OK"
+                Layout.alignment: Qt.AlignHCenter
+                onClicked: gameMessageDialog.close()
+            }
+        }
+    }
 }

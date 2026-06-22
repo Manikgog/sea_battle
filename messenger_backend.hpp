@@ -34,12 +34,14 @@ class MessengerBackend : public QObject
     QStringList messages() const;
     QStringList messageSenders() const;
     QStringList messageTimes() const;
-    NetworkManager* networkManager() const { return m_networkManager; }
-    bool isConnected() const { return m_networkManager->isConnected(); }
-    Q_INVOKABLE ModelAdapter* gameModel() const { return m_gameModel; }
+    NetworkManager* networkManager() const { return _networkManager; }
+    bool isConnected() const { return _networkManager->isConnected(); }
+    Q_INVOKABLE ModelAdapter* gameModel() const { return _gameModel; }
+    Q_INVOKABLE void setTurnStatus(const QString& status) { _gameModel->setTurnStatus(status); }
 
   public slots:
     void sendMessage(const QString &text);
+    void shotMessage(const QString &index);
     void receiveMessage(const QString &sender, const QString &text);
 
   signals:
@@ -52,10 +54,13 @@ class MessengerBackend : public QObject
     void onMessageReceived(const QString &sender, const QString &text);
 
   private:
-    QString         m_currentUser;
-    QList<Message>  m_messages;
-    NetworkManager  *m_networkManager;
-    ModelAdapter    *m_gameModel;
+    void sendShotResultMessage(Result shot_result, int index);
+
+
+    QString         _currentUser;
+    QList<Message>  _messages;
+    NetworkManager  *_networkManager;
+    ModelAdapter    *_gameModel;
 };
 
 #endif // MESSENGERBACKEND_H

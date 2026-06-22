@@ -60,7 +60,7 @@ void ModelAdapter::shot(int index) {
     }
 
     auto& enemyField = const_cast<std::vector<Cell>&>(_enemyField.getPlayingField());
-    auto& cell = enemyField[index];
+    Cell& cell = enemyField[index];
 
     if (!cell._isShoted) {
         qDebug() << "Player shoots at enemy cell:" << index;
@@ -127,6 +127,99 @@ void ModelAdapter::setEnemyField(const QJsonArray &fieldData) {
     emit gameStatusChanged();
 }
 
+
+
+/**
+ * @brief ModelAdapter::setShot - метод для отметки нанесения удара от противника и возвращения результата удара
+ * @param index
+ * @return
+ */
+std::optional<ShotResult> ModelAdapter::setShot(const QString &index)
+{
+    bool ok = true;
+    int index_int = index.toInt(&ok);
+    if(!ok) {
+        qDebug() << __FUNCTION__ << index << " не число.";
+        return {};
+    }
+    if(index_int < 0 || index_int >= _playerField.getPlayingField().size()) {
+        qDebug() << __FUNCTION__ << index_int << " лежит за пределами игрового поля.";
+        return {};
+    }
+    auto& field = const_cast<std::vector<Cell>&>(_playerField.getPlayingField());
+    Cell& cell = field[index_int];
+
+    if (!cell._isShoted) {
+        qDebug() << __FUNCTION__  << "Player shoots at enemy cell:" << index;
+        int destroyed_ships_before = _playerField.getDestroyedShipsAmount();
+        cell._isShoted = true;
+        bool isMiss = true;
+        if (cell._isOccupied) {
+            isMiss = false;
+            qDebug() << __FUNCTION__ << "HIT!";
+        }
+
+        checkWinCondition();
+        emit gameStatusChanged();
+
+        if (!_gameWon && isMiss) {
+            _playerFieldBlocked = true;
+            _turnStatus = "Ваш ход (промах!)";
+            emit turnStatusChanged();
+            emit gameStatusChanged();
+            return {ShotResult{Result::Miss, index_int}};
+        } else if (!_gameWon && !isMiss) {
+            _turnStatus = "Ход противника...";
+            emit turnStatusChanged();
+            emit gameStatusChanged();
+            int destroyed_ships_after = _playerField.getDestroyedShipsAmount();
+            if(destroyed_ships_before < destroyed_ships_after) {
+                return {ShotResult{Result::Destroyed, index_int}};
+            }
+            return {ShotResult{Result::Wounded, index_int}};
+        }
+    }
+    return {ShotResult{Result::Miss, index_int}};
+}
+
+
+
+
+/**
+ * @brief ModelAdapter::setResult метод для фиксации результата стрельбы по противнику
+ * @param result - статус попадания (мимо, убит, ранен)
+ * @param index - индекс ячейки
+ */
+void ModelAdapter::setResult(const QString &result, const QString &index) {
+    bool ok = false;
+    int res = result.toUInt(&ok);
+    if(!ok) {
+        return;
+    }
+    int index_int = index.toInt(&ok);
+    if(!ok) {
+        return;
+    }
+    auto& field = const_cast<std::vector<Cell>&>(_enemyField.getPlayingField());
+    Cell& cell = field[index_int];
+    if(res == Result::Miss) {
+        _turnStatus = "Ход противника (промах)";
+        cell._isShoted = true;
+    } else if(res == Result::Wounded) {
+        _turnStatus = "Ваш ход (ранен)";
+        cell._isShoted = true;
+        cell._isOccupied = true;
+    } else if(res == Result::Destroyed) {
+        _turnStatus = "Ваш ход (убит)";
+        cell._isShoted = true;
+        cell._isOccupied = true;
+    }
+    emit playerFieldUpdated();
+    emit gameStatusChanged();
+    emit turnStatusChanged();
+    qDebug() << __FUNCTION__;
+}
+
 void ModelAdapter::newGame() {
     _playerField.reset();
     _playerField.automaticShipsPlacing();
@@ -153,6 +246,19 @@ QString ModelAdapter::getPlayerGameStatus() {
     int totalShips = _playerField.getShips().size();
 
     for (const Ship& ship : _playerField.getShips()) {
+        if (ship.isDestroyed()) {
+            shipsDestroyed++;
+        }
+    }
+
+    return QString("Корабли уничтожены: %1 / %2").arg(shipsDestroyed).arg(totalShips);
+}
+
+QString ModelAdapter::getEnemyGameStatus() {
+    int shipsDestroyed = 0;
+    int totalShips = _enemyField.getShips().size();
+
+    for (const Ship& ship : _enemyField.getShips()) {
         if (ship.isDestroyed()) {
             shipsDestroyed++;
         }

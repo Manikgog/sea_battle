@@ -28,14 +28,21 @@ class ModelAdapter : public QObject {
     Q_INVOKABLE void shot(int index);
     Q_INVOKABLE void newGame();
     Q_INVOKABLE QString getPlayerGameStatus();
+    Q_INVOKABLE QString getEnemyGameStatus();
     Q_INVOKABLE bool isPlayerFieldBlocked() const {
         return _playerFieldBlocked;
     }
     Q_INVOKABLE QString getTurnStatus();
+    Q_INVOKABLE void setTurnStatus(const QString& status) { _turnStatus = status; }
     Q_INVOKABLE void shipPlacing();
 
     // Для сетевой игры
     Q_INVOKABLE void setEnemyField(const QJsonArray &fieldData);
+    Q_INVOKABLE bool isGameStarted() const {
+        return !_gameWon && !_gameOver;
+    }
+    std::optional<ShotResult> setShot(const QString& index);
+    void setResult(const QString& result, const QString& index);
 
   signals:
     void gameStatusChanged();

@@ -24,12 +24,12 @@ class NetworkManager : public QObject
   public:
     explicit NetworkManager(QObject *parent = nullptr);
 
-    bool isConnected() const { return m_isConnected; }
-    bool isServer() const { return m_isServer; }
+    bool isConnected() const { return _isConnected; }
+    bool isServer() const { return _isServer; }
     void setIsServer(bool isServer);
-    QString connectionStatus() const { return m_connectionStatus; }
+    QString connectionStatus() const { return _connectionStatus; }
     QString localAddress() const;
-    int port() const { return m_port; }
+    int port() const { return _port; }
 
   public slots:
     void startServer(int port = 8080);
@@ -62,15 +62,15 @@ class NetworkManager : public QObject
     void sendToAll(const QJsonObject &json, QWebSocket *exclude = nullptr);
     void sendToClient(QWebSocket *client, const QJsonObject &json);
 
-    QWebSocketServer *m_server = nullptr;
-    QWebSocket *m_clientSocket = nullptr;
-    QList<QWebSocket *> m_clients;
-    QString m_userName;
-    QString m_connectionStatus;
-    bool m_isConnected = false;
-    bool m_isServer = false;
-    int m_port = 8080;
-    QHash<QWebSocket *, QString> m_clientNames;
+    QWebSocketServer                *_server = nullptr;
+    QWebSocket                      *_clientSocket = nullptr;
+    QList<QWebSocket *>             _clients;
+    QString                         _userName;
+    QString                         _connectionStatus;
+    bool                            _isConnected = false;
+    bool                            _isServer = false;
+    int                             _port = 8080;
+    QHash<QWebSocket *, QString>    _clientNames;
 };
 
 #endif // NETWORKMANAGER_H
