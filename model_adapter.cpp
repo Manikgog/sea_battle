@@ -106,8 +106,8 @@ void ModelAdapter::shipPlacing() {
     // Сбрасываем состояние игры
     _gameWon = false;
     _gameOver = false;
-    _playerFieldBlocked = false;
-    _turnStatus = "Ваш ход";
+    _playerFieldBlocked = true;
+    _turnStatus = "Ожидание начала игры ...";
 
     emit playerFieldUpdated();
     emit gameStatusChanged();
@@ -203,21 +203,29 @@ void ModelAdapter::setResult(const QString &result, const QString &index) {
     auto& field = const_cast<std::vector<Cell>&>(_enemyField.getPlayingField());
     Cell& cell = field[index_int];
     if(res == Result::Miss) {
-        _turnStatus = "Ход противника (промах)";
+        //_turnStatus = "Ход противника (промах)";
+        _playerFieldBlocked = true;
         cell._isShoted = true;
+        checkWinCondition();
+        updateTurnStatus();
     } else if(res == Result::Wounded) {
-        _turnStatus = "Ваш ход (ранен)";
+        //_turnStatus = "Ваш ход (ранен)";
+        _playerFieldBlocked = false;
         cell._isShoted = true;
         cell._isOccupied = true;
+        checkWinCondition();
+        updateTurnStatus();
     } else if(res == Result::Destroyed) {
-        _turnStatus = "Ваш ход (убит)";
+       // _turnStatus = "Ваш ход (убит)";
+        _playerFieldBlocked = false;
         cell._isShoted = true;
         cell._isOccupied = true;
+        checkWinCondition();
+        updateTurnStatus();
     }
     emit playerFieldUpdated();
     emit gameStatusChanged();
     emit turnStatusChanged();
-    qDebug() << __FUNCTION__;
 }
 
 void ModelAdapter::newGame() {
@@ -294,14 +302,19 @@ void ModelAdapter::checkWinCondition() {
 }
 
 void ModelAdapter::updateTurnStatus() {
-    if (_gameWon) {
-        _turnStatus = "🏆 ПОБЕДА! 🏆";
-    } else if (_gameOver) {
-        _turnStatus = "💀 ВЫ ПРОИГРАЛИ! 💀";
-    } else if (_playerFieldBlocked) {
-        _turnStatus = "Ход бота...";
+    if(_game_started) {
+        if (_gameWon) {
+            _turnStatus = "🏆 ПОБЕДА! 🏆";
+        } else if (_gameOver) {
+            _turnStatus = "💀 ВЫ ПРОИГРАЛИ! 💀";
+        } else if (_playerFieldBlocked) {
+            _turnStatus = "Ход противника";
+        } else {
+            _turnStatus = "Ваш ход";
+        }
     } else {
-        _turnStatus = "Ваш ход";
+        _turnStatus = "Ожидание...";
     }
+
     emit turnStatusChanged();
 }

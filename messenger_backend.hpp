@@ -49,6 +49,7 @@ class MessengerBackend : public QObject
     void messagesChanged();
     void newMessageReceived(const QString &sender, const QString &text);
     void isConnectedChanged();
+    void updateGameButtonState();
 
   private slots:
     void onMessageReceived(const QString &sender, const QString &text);

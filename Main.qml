@@ -15,6 +15,19 @@ ApplicationWindow {
     property bool isConnected: backend.isConnected
     property bool isServer: false
     property bool clientReady: false
+    property bool gameStarted: false
+
+    function updateGameButtonState() {
+        if (isServer) {
+                // Для сервера кнопка "Начать игру" активна, если есть подключение, клиент готов и игра не началась
+                gameButton.text = "Начать игру"
+                gameButton.enabled = isConnected && clientReady && !gameStarted
+            } else {
+                // Для клиента кнопка "Готов" активна, если есть подключение, клиент не готов и игра не началась
+                gameButton.text = "Готов"
+                gameButton.enabled = isConnected && !clientReady && !gameStarted
+            }
+    }
 
     // Функция для обновления конкретной клетки поля бота
     function updateEnemyCell(index) {
@@ -174,8 +187,10 @@ ApplicationWindow {
                             backend.networkManager.isServer = currentIndex === 1
                             // Сбрасываем состояние готовности при смене роли
                             root.clientReady = false
+                            root.gameStarted = false
                             // Обновляем состояние кнопки
-                            updateGameButtonState()
+                            root.updateGameButtonState()
+                            shipPlacement.enabled = true
                         }
                     }
 
@@ -203,7 +218,9 @@ ApplicationWindow {
                             if (backend.isConnected) {
                                 backend.networkManager.disconnectFromHost()
                                 root.clientReady = false
-                                updateGameButtonState()
+                                root.gameStarted = false
+                                root.updateGameButtonState()
+                                shipPlacement.enabled = true
                             } else {
                                 if (modeCombo.currentIndex === 0) {
                                     backend.networkManager.connectToHost(addressField.text, 8080)
@@ -374,6 +391,7 @@ ApplicationWindow {
                         Layout.preferredWidth: 80
                         Layout.preferredHeight: 40
                         text: "Расставить корабли"
+                        enabled: !root.gameStarted
 
                         background: Rectangle {
                             color: parent.enabled ? "#2196F3" : "#b0bec5"
@@ -533,9 +551,10 @@ ApplicationWindow {
                         text: root.isServer ? "Начать игру" : "Готов"
                         enabled: {
                             if (root.isServer) {
-                                return backend.isConnected && root.clientReady
+                                return root.isConnected && root.clientReady && !root.gameStarted
                             } else {
-                                return backend.isConnected && !root.clientReady
+                                // Для клиента: кнопка активна, если есть подключение, клиент НЕ готов и игра не началась
+                                return root.isConnected && !root.clientReady && !root.gameStarted
                             }
                         }
 
@@ -557,32 +576,23 @@ ApplicationWindow {
                             if (root.isServer) {
                                 if (root.model) {
                                     backend.sendMessage("game_start")
+                                    root.clientReady = true
+                                    root.gameStarted = true
+                                    root.updateGameButtonState()
+                                    shipPlacement.enabled = false
                                     playerStatusText.text = root.model.getPlayerGameStatus();
                                     turnIndicatorText.text = root.model.getTurnStatus();
-                                    root.clientReady = false
-                                    updateGameButtonState()
-                                    root.model.setTurnStatus(turnIndicatorText.text)
                                 }
                             } else {
-                                root.clientReady = true
-                                backend.sendMessage("player_ready")
-                                backend.receiveMessage("Система", "Вы готовы к игре. Ожидайте начала.")
-                                updateGameButtonState()
-                                playerStatusText.text = root.model.getPlayerGameStatus();
-                                turnIndicatorText.text = root.model.getTurnStatus();
-                                root.model.setTurnStatus(turnIndicatorText.text)
+                                if (root.model) {
+                                    backend.sendMessage("player_ready")
+                                    backend.receiveMessage("Система", "Вы готовы к игре. Ожидайте начала.")
+                                    root.clientReady = true
+                                    root.updateGameButtonState()
+                                    playerStatusText.text = root.model.getPlayerGameStatus();
+                                    turnIndicatorText.text = root.model.getTurnStatus();
+                                }
                             }
-                        }
-                    }
-
-                    // Функция обновления состояния кнопки внутри области видимости
-                    function updateGameButtonState() {
-                        if (root.isServer) {
-                            gameButton.text = "Начать игру"
-                            gameButton.enabled = backend.isConnected && root.clientReady
-                        } else {
-                            gameButton.text = "Готов"
-                            gameButton.enabled = backend.isConnected && !root.clientReady
                         }
                     }
                 }
@@ -757,15 +767,14 @@ ApplicationWindow {
             if (sender !== backend.currentUser) {
                 if (text === "player_ready") {
                     root.clientReady = true
-                    // Используем вызов через gameButton.updateGameButtonState если доступно
-                    if (gameButton && gameButton.updateGameButtonState) {
-                        gameButton.updateGameButtonState()
-                    }
+                    root.updateGameButtonState()
                     backend.receiveMessage("Система", "Противник готов к игре!")
                 } else if (text === "game_start") {
                     if (root.model) {
+                        root.gameStarted = true
                         root.model.shipPlacing()
                         root.updateAllCells()
+                        shipPlacement.enabled = false
                         playerStatusText.text = root.model.getPlayerGameStatus()
                         turnIndicatorText.text = root.model.getTurnStatus()
                         backend.receiveMessage("Система", "Игра началась! Ваш ход.")
@@ -817,7 +826,7 @@ ApplicationWindow {
                 turnIndicatorRect.color = "#27ae60"
             } else if (status.includes("ПРОИГРАЛИ")) {
                 turnIndicatorRect.color = "#e74c3c"
-            } else if (status.includes("Ход бота")) {
+            } else if (status.includes("Ход противника")) {
                 turnIndicatorRect.color = "#f39c12"
             } else {
                 turnIndicatorRect.color = "#3498db"
@@ -831,10 +840,9 @@ ApplicationWindow {
             playerStatusText.text = root.model.getPlayerGameStatus();
             turnIndicatorText.text = root.model.getTurnStatus();
         }
-        // Инициализируем состояние кнопки
-        if (gameButton && gameButton.updateGameButtonState) {
-            gameButton.updateGameButtonState()
-        }
+
+        root.updateGameButtonState()
+        shipPlacement.enabled = true
     }
 
     // Диалог для уведомлений

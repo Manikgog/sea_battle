@@ -75,8 +75,10 @@ void MessengerBackend::sendMessage(const QString &text)
     msg.text = text.trimmed();
     msg.timestamp = QDateTime::currentDateTime();
 
-    _messages.append(msg);
-    emit messagesChanged();
+    if(msg.text != "player_ready") {
+        _messages.append(msg);
+        emit messagesChanged();
+    }
 
     // Отправляем по сети
     _networkManager->sendMessage(_currentUser, msg.text);
@@ -115,6 +117,10 @@ void MessengerBackend::shotMessage(const QString &index)
     qDebug() << "Выстрел от" << _currentUser << ":" << msg.text;
 }
 
+
+
+
+
 void MessengerBackend::receiveMessage(const QString &sender, const QString &text)
 {
     if (text.trimmed().isEmpty()) {
@@ -128,12 +134,9 @@ void MessengerBackend::receiveMessage(const QString &sender, const QString &text
 
     QStringList message_parts = msg.text.split(" ");
     int counter = 1;
-    for(const QString& s : message_parts) {
-        qDebug() << "part" << counter++ << s;
-    }
     if(!message_parts.empty()) {
         if(message_parts[0] == "shot" && message_parts.size() == 2) {
-            qDebug() << message_parts[0] << message_parts[1];
+            qDebug() << "shot =>" << message_parts[0] << "index =>" << message_parts[1];
             std::optional<ShotResult> result_optional = _gameModel->setShot(message_parts[1]);
             Result result = Result::Miss;
             if(result_optional.has_value()) {
@@ -155,8 +158,12 @@ void MessengerBackend::receiveMessage(const QString &sender, const QString &text
     if (text == "player_ready") {
         // Клиент готов - просто показываем в чате
         // QML обработает это через onNewMessageReceived
+        emit updateGameButtonState();
+        return;
     } else if (text == "game_start") {
         // Сервер начал игру - QML обработает это
+        emit updateGameButtonState();
+        return;
     }
 
     _messages.append(msg);
@@ -169,6 +176,9 @@ void MessengerBackend::receiveMessage(const QString &sender, const QString &text
 void MessengerBackend::onMessageReceived(const QString &sender, const QString &text)
 {
     receiveMessage(sender, text);
+    if (text == "player_ready" || text == "game_start") {
+        emit updateGameButtonState();
+    }
 }
 
 void MessengerBackend::sendShotResultMessage(Result shot_result, int index)

@@ -33,7 +33,9 @@ class ModelAdapter : public QObject {
         return _playerFieldBlocked;
     }
     Q_INVOKABLE QString getTurnStatus();
-    Q_INVOKABLE void setTurnStatus(const QString& status) { _turnStatus = status; }
+    Q_INVOKABLE void setTurnStatus(const QString& status) {
+        _turnStatus = status;
+    }
     Q_INVOKABLE void shipPlacing();
 
     // Для сетевой игры
@@ -50,6 +52,7 @@ class ModelAdapter : public QObject {
     void gameOver();
     void turnStatusChanged();
     void playerFieldUpdated();
+    void updateGameButtonState();
 
   private:
     void checkWinCondition();
@@ -60,7 +63,8 @@ class ModelAdapter : public QObject {
     bool    _gameWon;
     bool    _gameOver;
     bool    _playerFieldBlocked = false;
-    QString _turnStatus = "Ваш ход";
+    QString _turnStatus;
+    bool    _game_started = false;
 };
 
 #endif // MODEL_ADAPTER_HPP
