@@ -8,50 +8,143 @@ ModelAdapter::ModelAdapter(QObject *parent)
     : QObject(parent)
       , _gameWon(false)
       , _gameOver(false)
+      , _playerFieldBlocked(true)
+      , _turnStatus("Ожидание подключения...")
+      , _gameStarted(false)
 {
     // Расставляем корабли на поле игрока
     _playerField.automaticShipsPlacing();
-
-    // Расставляем корабли на поле противника (для одиночной игры)
+    // Расставляем корабли на поле противника
     _enemyField.automaticShipsPlacing();
-
     updateTurnStatus();
 }
 
-// === Методы для поля игрока (левое поле) ===
-
 bool ModelAdapter::getPlayerCellIsOccupied(int index) {
-    if (index < 0 || index >= _playerField.getPlayingField().size()) {
+    if (index < 0 || index >= static_cast<int>(_playerField.getPlayingField().size())) {
         return false;
     }
     return _playerField.getPlayingField()[index]._isOccupied;
 }
 
 bool ModelAdapter::getPlayerCellIsShoted(int index) {
-    if (index < 0 || index >= _playerField.getPlayingField().size()) {
+    if (index < 0 || index >= static_cast<int>(_playerField.getPlayingField().size())) {
         return false;
     }
     return _playerField.getPlayingField()[index]._isShoted;
 }
 
-// === Методы для поля противника (правое поле) ===
-
 bool ModelAdapter::getEnemyCellIsOccupied(int index) {
-    if (index < 0 || index >= _enemyField.getPlayingField().size()) {
+    if (index < 0 || index >= static_cast<int>(_enemyField.getPlayingField().size())) {
         return false;
     }
     return _enemyField.getPlayingField()[index]._isOccupied;
 }
 
 bool ModelAdapter::getEnemyCellIsShoted(int index) {
-    if (index < 0 || index >= _enemyField.getPlayingField().size()) {
+    if (index < 0 || index >= static_cast<int>(_enemyField.getPlayingField().size())) {
         return false;
     }
     return _enemyField.getPlayingField()[index]._isShoted;
 }
 
+std::optional<ShotResult> ModelAdapter::setShot(const QString &indexStr)
+{
+    bool ok;
+    int index = indexStr.toInt(&ok);
+    if (!ok) {
+        qDebug() << __FUNCTION__ << indexStr << " не число.";
+        return {};
+    }
+
+    if (index < 0 || index >= static_cast<int>(_playerField.getPlayingField().size())) {
+        qDebug() << __FUNCTION__ << index << " лежит за пределами игрового поля.";
+        return {};
+    }
+
+    auto& field = const_cast<std::vector<Cell>&>(_playerField.getPlayingField());
+    Cell& cell = field[index];
+
+    if (cell._isShoted) {
+        return {ShotResult{Result::Miss, index}};
+    }
+
+    qDebug() << __FUNCTION__ << "Противник стреляет в клетку:" << index;
+
+    int destroyedShipsBefore = _playerField.getDestroyedShipsAmount();
+    cell._isShoted = true;
+
+    ShotResult result;
+    result._index = index;
+
+    if (cell._isOccupied) {
+        qDebug() << __FUNCTION__ << "Попадание!";
+        result._result = Result::Wounded;
+
+        // Проверяем, уничтожен ли корабль
+        int destroyedShipsAfter = _playerField.getDestroyedShipsAmount();
+        if (destroyedShipsAfter > destroyedShipsBefore) {
+            result._result = Result::Destroyed;
+        }
+    } else {
+        qDebug() << __FUNCTION__ << "Промах!";
+        result._result = Result::Miss;
+    }
+
+    checkWinCondition();
+    emit gameStatusChanged();
+    updateTurnStatus();
+
+    return result;
+}
+
+void ModelAdapter::setResult(const QString &resultStr, const QString &indexStr)
+{
+    bool ok;
+    int res = resultStr.toInt(&ok);
+    if (!ok) {
+        qDebug() << __FUNCTION__ << "Неверный результат:" << resultStr;
+        return;
+    }
+
+    int index = indexStr.toInt(&ok);
+    if (!ok) {
+        qDebug() << __FUNCTION__ << "Неверный индекс:" << indexStr;
+        return;
+    }
+
+    auto& field = const_cast<std::vector<Cell>&>(_enemyField.getPlayingField());
+    if (index < 0 || index >= static_cast<int>(field.size())) {
+        return;
+    }
+
+    Cell& cell = field[index];
+    cell._isShoted = true;
+
+    if (res == Result::Miss) {
+        _playerFieldBlocked = true;
+        qDebug() << "Промах по противнику";
+    } else if (res == Result::Wounded) {
+        _playerFieldBlocked = false;
+        cell._isOccupied = true;
+        qDebug() << "Попадание по противнику (ранен)";
+    } else if (res == Result::Destroyed) {
+        _playerFieldBlocked = false;
+        cell._isOccupied = true;
+        qDebug() << "Попадание по противнику (убит)";
+    }
+
+    checkWinCondition();
+    emit gameStatusChanged();
+    emit playerFieldUpdated();
+    updateTurnStatus();
+}
+
 void ModelAdapter::shot(int index) {
-    if (_gameWon || _gameOver || _playerFieldBlocked) {
+    if (_gameWon || _gameOver || _playerFieldBlocked || !_gameStarted) {
+        qDebug() << "Невозможно выстрелить: gameWon=" << _gameWon
+                 << " gameOver=" << _gameOver
+                 << " blocked=" << _playerFieldBlocked
+                 << " started=" << _gameStarted;
         return;
     }
 
@@ -59,173 +152,41 @@ void ModelAdapter::shot(int index) {
         return;
     }
 
-    auto& enemyField = const_cast<std::vector<Cell>&>(_enemyField.getPlayingField());
-    Cell& cell = enemyField[index];
+    auto& field = const_cast<std::vector<Cell>&>(_enemyField.getPlayingField());
+    Cell& cell = field[index];
 
-    if (!cell._isShoted) {
-        qDebug() << "Player shoots at enemy cell:" << index;
-
-        cell._isShoted = true;
-        bool isMiss = true;
-        if (cell._isOccupied) {
-            isMiss = false;
-            qDebug() << "HIT!";
-        }
-
-        checkWinCondition();
-        emit gameStatusChanged();
-
-        if (!_gameWon && isMiss) {
-            _playerFieldBlocked = true;
-            _turnStatus = "Ход бота...";
-            emit turnStatusChanged();
-            emit gameStatusChanged();
-
-        } else if (!_gameWon && !isMiss) {
-            _turnStatus = "Ваш ход (попадание!)";
-            emit turnStatusChanged();
-            emit gameStatusChanged();
-        }
+    if (cell._isShoted) {
+        qDebug() << "Клетка уже обстреляна:" << index;
+        return;
     }
+
+    qDebug() << "Игрок стреляет в клетку:" << index;
+
+    // Блокируем поле до получения результата
+    _playerFieldBlocked = true;
+    emit gameStatusChanged();
+    updateTurnStatus();
+
+    // Отправляем выстрел через бэкенд
+    emit shotRequested(index);
 }
-
-
 
 void ModelAdapter::shipPlacing() {
     qDebug() << "=== Перерасстановка кораблей игрока ===";
 
-    // Сбрасываем поле игрока
     _playerField.reset();
+    _playerField.automaticShipsPlacing();
 
-    // Расставляем корабли на поле игрока заново
-    bool playerPlaced = _playerField.automaticShipsPlacing();
-
-    qDebug() << "Корабли игрока расставлены:" << playerPlaced;
-    qDebug() << "Количество кораблей:" << _playerField.getShips().size();
-
-    // Сбрасываем состояние игры
     _gameWon = false;
     _gameOver = false;
     _playerFieldBlocked = true;
-    _turnStatus = "Ожидание начала игры ...";
+    _gameStarted = false;
+    _turnStatus = "Ожидание начала игры...";
 
     emit playerFieldUpdated();
     emit gameStatusChanged();
     emit turnStatusChanged();
-}
-
-void ModelAdapter::setEnemyField(const QJsonArray &fieldData) {
-    // Для сетевой игры: получаем поле противника по сети
-    // auto& enemyField = const_cast<std::vector<Cell>&>(_enemyField.getPlayingField());
-
-    // for (int i = 0; i < fieldData.size() && i < enemyField.size(); ++i) {
-    //     //QJsonObject cellData = fieldData[i].toObject();
-    //     //enemyField[i]._isOccupied = cellData["isOccupied"].toBool();
-    //     // _isShoted не копируем - это состояние выстрелов игрока
-    // }
-
-    emit gameStatusChanged();
-}
-
-
-
-/**
- * @brief ModelAdapter::setShot - метод для отметки нанесения удара от противника и возвращения результата удара
- * @param index
- * @return
- */
-std::optional<ShotResult> ModelAdapter::setShot(const QString &index)
-{
-    bool ok = true;
-    int index_int = index.toInt(&ok);
-    if(!ok) {
-        qDebug() << __FUNCTION__ << index << " не число.";
-        return {};
-    }
-    if(index_int < 0 || index_int >= _playerField.getPlayingField().size()) {
-        qDebug() << __FUNCTION__ << index_int << " лежит за пределами игрового поля.";
-        return {};
-    }
-    auto& field = const_cast<std::vector<Cell>&>(_playerField.getPlayingField());
-    Cell& cell = field[index_int];
-
-    if (!cell._isShoted) {
-        qDebug() << __FUNCTION__  << "Player shoots at enemy cell:" << index;
-        int destroyed_ships_before = _playerField.getDestroyedShipsAmount();
-        cell._isShoted = true;
-        bool isMiss = true;
-        if (cell._isOccupied) {
-            isMiss = false;
-            qDebug() << __FUNCTION__ << "HIT!";
-        }
-
-        checkWinCondition();
-        emit gameStatusChanged();
-
-        if (!_gameWon && isMiss) {
-            _playerFieldBlocked = true;
-            _turnStatus = "Ваш ход (промах!)";
-            emit turnStatusChanged();
-            emit gameStatusChanged();
-            return {ShotResult{Result::Miss, index_int}};
-        } else if (!_gameWon && !isMiss) {
-            _turnStatus = "Ход противника...";
-            emit turnStatusChanged();
-            emit gameStatusChanged();
-            int destroyed_ships_after = _playerField.getDestroyedShipsAmount();
-            if(destroyed_ships_before < destroyed_ships_after) {
-                return {ShotResult{Result::Destroyed, index_int}};
-            }
-            return {ShotResult{Result::Wounded, index_int}};
-        }
-    }
-    return {ShotResult{Result::Miss, index_int}};
-}
-
-
-
-
-/**
- * @brief ModelAdapter::setResult метод для фиксации результата стрельбы по противнику
- * @param result - статус попадания (мимо, убит, ранен)
- * @param index - индекс ячейки
- */
-void ModelAdapter::setResult(const QString &result, const QString &index) {
-    bool ok = false;
-    int res = result.toUInt(&ok);
-    if(!ok) {
-        return;
-    }
-    int index_int = index.toInt(&ok);
-    if(!ok) {
-        return;
-    }
-    auto& field = const_cast<std::vector<Cell>&>(_enemyField.getPlayingField());
-    Cell& cell = field[index_int];
-    if(res == Result::Miss) {
-        //_turnStatus = "Ход противника (промах)";
-        _playerFieldBlocked = true;
-        cell._isShoted = true;
-        checkWinCondition();
-        updateTurnStatus();
-    } else if(res == Result::Wounded) {
-        //_turnStatus = "Ваш ход (ранен)";
-        _playerFieldBlocked = false;
-        cell._isShoted = true;
-        cell._isOccupied = true;
-        checkWinCondition();
-        updateTurnStatus();
-    } else if(res == Result::Destroyed) {
-       // _turnStatus = "Ваш ход (убит)";
-        _playerFieldBlocked = false;
-        cell._isShoted = true;
-        cell._isOccupied = true;
-        checkWinCondition();
-        updateTurnStatus();
-    }
-    emit playerFieldUpdated();
-    emit gameStatusChanged();
-    emit turnStatusChanged();
+    emit updateGameButtonState();
 }
 
 void ModelAdapter::newGame() {
@@ -236,18 +197,29 @@ void ModelAdapter::newGame() {
 
     _gameWon = false;
     _gameOver = false;
-    _playerFieldBlocked = false;
-    _turnStatus = "Ваш ход";
+    _playerFieldBlocked = true;
+    _gameStarted = false;
+    _turnStatus = "Ожидание начала игры...";
 
     emit turnStatusChanged();
     emit gameStatusChanged();
     emit playerFieldUpdated();
 }
 
+void ModelAdapter::startGame() {
+    _gameStarted = true;
+    _playerFieldBlocked = false;
+    _turnStatus = "Ваш ход!";
+    emit turnStatusChanged();
+    emit gameStatusChanged();
+    emit playerFieldUpdated();
+    emit updateGameButtonState();
+    qDebug() << "Игра началась!";
+}
+
 QString ModelAdapter::getTurnStatus() {
     return _turnStatus;
 }
-
 
 QString ModelAdapter::getPlayerGameStatus() {
     int shipsDestroyed = 0;
@@ -283,7 +255,7 @@ void ModelAdapter::checkWinCondition() {
 
     if (playerLost && !_gameOver) {
         _gameOver = true;
-        _playerFieldBlocked = false;
+        _playerFieldBlocked = true;
         _turnStatus = "💀 ВЫ ПРОИГРАЛИ! 💀";
         emit turnStatusChanged();
         emit gameStatusChanged();
@@ -293,7 +265,7 @@ void ModelAdapter::checkWinCondition() {
 
     if (playerWon && !_gameWon) {
         _gameWon = true;
-        _playerFieldBlocked = false;
+        _playerFieldBlocked = true;
         _turnStatus = "🏆 ПОБЕДА! 🏆";
         emit turnStatusChanged();
         emit gameWon();
@@ -302,18 +274,16 @@ void ModelAdapter::checkWinCondition() {
 }
 
 void ModelAdapter::updateTurnStatus() {
-    if(_game_started) {
-        if (_gameWon) {
-            _turnStatus = "🏆 ПОБЕДА! 🏆";
-        } else if (_gameOver) {
-            _turnStatus = "💀 ВЫ ПРОИГРАЛИ! 💀";
-        } else if (_playerFieldBlocked) {
-            _turnStatus = "Ход противника";
-        } else {
-            _turnStatus = "Ваш ход";
-        }
+    if (_gameWon) {
+        _turnStatus = "🏆 ПОБЕДА! 🏆";
+    } else if (_gameOver) {
+        _turnStatus = "💀 ВЫ ПРОИГРАЛИ! 💀";
+    } else if (!_gameStarted) {
+        _turnStatus = "Ожидание начала игры...";
+    } else if (_playerFieldBlocked) {
+        _turnStatus = "Ожидание хода противника...";
     } else {
-        _turnStatus = "Ожидание...";
+        _turnStatus = "Ваш ход!";
     }
 
     emit turnStatusChanged();

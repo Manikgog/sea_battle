@@ -13,14 +13,26 @@ MessengerBackend::MessengerBackend(QObject *parent)
     connect(_networkManager, &NetworkManager::connectionStatusChanged,
             this, &MessengerBackend::isConnectedChanged);
 
-           // Добавляем системное сообщение
-    receiveMessage("Система", "Добро пожаловать в мессенджер! Настройте подключение.");
+    receiveMessage("Система", "Добро пожаловать в игру Морской бой! Настройте подключение.");
 }
+
+
+
+
+
+
 
 QString MessengerBackend::currentUser() const
 {
     return _currentUser;
 }
+
+
+
+
+
+
+
 
 void MessengerBackend::setCurrentUser(const QString &user)
 {
@@ -31,6 +43,14 @@ void MessengerBackend::setCurrentUser(const QString &user)
     }
 }
 
+
+
+
+
+
+
+
+
 QStringList MessengerBackend::messages() const
 {
     QStringList result;
@@ -39,6 +59,11 @@ QStringList MessengerBackend::messages() const
     }
     return result;
 }
+
+
+
+
+
 
 QStringList MessengerBackend::messageSenders() const
 {
@@ -49,6 +74,12 @@ QStringList MessengerBackend::messageSenders() const
     return result;
 }
 
+
+
+
+
+
+
 QStringList MessengerBackend::messageTimes() const
 {
     QStringList result;
@@ -57,6 +88,12 @@ QStringList MessengerBackend::messageTimes() const
     }
     return result;
 }
+
+
+
+
+
+
 
 
 void MessengerBackend::sendMessage(const QString &text)
@@ -75,23 +112,23 @@ void MessengerBackend::sendMessage(const QString &text)
     msg.text = text.trimmed();
     msg.timestamp = QDateTime::currentDateTime();
 
-    if(msg.text != "player_ready") {
+    if (msg.text != "player_ready" && msg.text != "game_start" && !msg.text.startsWith("shot ") && !msg.text.startsWith("result ")) {
         _messages.append(msg);
         emit messagesChanged();
     }
 
-    // Отправляем по сети
     _networkManager->sendMessage(_currentUser, msg.text);
-
     qDebug() << "Отправлено сообщение от" << _currentUser << ":" << text;
 }
 
 
 
-/**
- * @brief MessengerBackend::shotMessage метод для отправки сообщения с индексом клетки
- * @param index
- */
+
+
+
+
+
+
 void MessengerBackend::shotMessage(const QString &index)
 {
     if (index.trimmed().isEmpty()) {
@@ -103,19 +140,15 @@ void MessengerBackend::shotMessage(const QString &index)
         return;
     }
 
-    Message msg;
-    msg.sender = _currentUser;
-    msg.text = "shot " + index.trimmed();
-    msg.timestamp = QDateTime::currentDateTime();
-
-    //m_messages.append(msg);
-    //emit messagesChanged();
-
-    // Отправляем по сети
-    _networkManager->sendMessage(_currentUser, msg.text);
-
-    qDebug() << "Выстрел от" << _currentUser << ":" << msg.text;
+    QString msgText = "shot " + index.trimmed();
+    _networkManager->sendMessage(_currentUser, msgText);
+    qDebug() << "Выстрел от" << _currentUser << ":" << msgText;
 }
+
+
+
+
+
 
 
 
@@ -132,57 +165,79 @@ void MessengerBackend::receiveMessage(const QString &sender, const QString &text
     msg.text = text.trimmed();
     msg.timestamp = QDateTime::currentDateTime();
 
-    QStringList message_parts = msg.text.split(" ");
-    int counter = 1;
-    if(!message_parts.empty()) {
-        if(message_parts[0] == "shot" && message_parts.size() == 2) {
-            qDebug() << "shot =>" << message_parts[0] << "index =>" << message_parts[1];
-            std::optional<ShotResult> result_optional = _gameModel->setShot(message_parts[1]);
-            Result result = Result::Miss;
-            if(result_optional.has_value()) {
-                result = result_optional.value()._result;
-                int index = result_optional.value()._index;
-                sendShotResultMessage(result, index);
-            } else {
-                return;
+    QStringList messageParts = msg.text.split(" ");
+
+    // Обработка выстрела
+    if (!messageParts.empty() && messageParts[0] == "shot" && messageParts.size() == 2) {
+        qDebug() << "Получен выстрел от" << sender << "индекс:" << messageParts[1];
+
+        bool ok;
+        int index = messageParts[1].toInt(&ok);
+        if (ok) {
+            // Применяем выстрел к полю игрока
+            std::optional<ShotResult> result = _gameModel->setShot(messageParts[1]);
+            if (result.has_value()) {
+                // Отправляем результат обратно
+                sendShotResultMessage(result.value()._result, result.value()._index);
             }
-            return;
         }
-        if(message_parts[0] == "result" && message_parts.size() == 3) {
-            qDebug() << message_parts[0] << "result =>" << message_parts[1] << "index =>" << message_parts[2];
-            _gameModel->setResult(message_parts[1], message_parts[2]);
-            return;
-        }
+        return;
     }
 
+    // Обработка результата выстрела
+    if (!messageParts.empty() && messageParts[0] == "result" && messageParts.size() == 3) {
+        qDebug() << "Получен результат:" << messageParts[1] << "индекс:" << messageParts[2];
+        _gameModel->setResult(messageParts[1], messageParts[2]);
+        return;
+    }
+
+    // Обработка команд
     if (text == "player_ready") {
-        // Клиент готов - просто показываем в чате
-        // QML обработает это через onNewMessageReceived
+        qDebug() << "Получен player_ready от" << sender;
+        emit newMessageReceived(sender, text);
         emit updateGameButtonState();
+        _messages.append(msg);
+        emit messagesChanged();
         return;
     } else if (text == "game_start") {
-        // Сервер начал игру - QML обработает это
+        emit newMessageReceived(sender, text);
         emit updateGameButtonState();
+        _messages.append(msg);
+        emit messagesChanged();
         return;
     }
 
+    // Обычное сообщение
     _messages.append(msg);
     emit messagesChanged();
     emit newMessageReceived(sender, text);
-
     qDebug() << "Получено сообщение от" << sender << ":" << text;
 }
+
+
+
+
+
+
+
 
 void MessengerBackend::onMessageReceived(const QString &sender, const QString &text)
 {
     receiveMessage(sender, text);
-    if (text == "player_ready" || text == "game_start") {
-        emit updateGameButtonState();
-    }
 }
 
-void MessengerBackend::sendShotResultMessage(Result shot_result, int index)
+
+
+
+
+
+
+
+void MessengerBackend::sendShotResultMessage(Result shotResult, int index)
 {
-    QString message_text = "result " + QString::number(shot_result) + " " + QString::number(index);
-    sendMessage(message_text);
+    QString messageText = "result " + QString::number(shotResult) + " " + QString::number(index);
+    if (_networkManager->isConnected()) {
+        _networkManager->sendMessage(_currentUser, messageText);
+        qDebug() << "Отправлен результат:" << messageText;
+    }
 }

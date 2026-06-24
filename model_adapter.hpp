@@ -9,19 +9,15 @@
 class ModelAdapter : public QObject {
     Q_OBJECT
     QML_ELEMENT
-    QML_SINGLETON
-
-    //Q_PROPERTY(QString enemyGameStatus READ getEnemyGameStatus NOTIFY gameStatusChanged)
-    Q_PROPERTY(QString playerGameStatus READ getPlayerGameStatus NOTIFY gameStatusChanged)
 
   public:
     explicit ModelAdapter(QObject *parent = nullptr);
 
-           // Методы для поля игрока (левое поле)
+           // Методы для поля игрока
     Q_INVOKABLE bool getPlayerCellIsOccupied(int index);
     Q_INVOKABLE bool getPlayerCellIsShoted(int index);
 
-    // Методы для поля противника (правое поле)
+           // Методы для поля противника
     Q_INVOKABLE bool getEnemyCellIsOccupied(int index);
     Q_INVOKABLE bool getEnemyCellIsShoted(int index);
 
@@ -30,19 +26,23 @@ class ModelAdapter : public QObject {
     Q_INVOKABLE QString getPlayerGameStatus();
     Q_INVOKABLE QString getEnemyGameStatus();
     Q_INVOKABLE bool isPlayerFieldBlocked() const {
-        return _playerFieldBlocked;
+        return _playerFieldBlocked || _gameWon || _gameOver;
     }
     Q_INVOKABLE QString getTurnStatus();
     Q_INVOKABLE void setTurnStatus(const QString& status) {
         _turnStatus = status;
+        emit turnStatusChanged();
     }
     Q_INVOKABLE void shipPlacing();
-
-    // Для сетевой игры
-    Q_INVOKABLE void setEnemyField(const QJsonArray &fieldData);
+    Q_INVOKABLE void startGame();
     Q_INVOKABLE bool isGameStarted() const {
-        return !_gameWon && !_gameOver;
+        return _gameStarted;
     }
+    Q_INVOKABLE bool isGameOver() const {
+        return _gameWon || _gameOver;
+    }
+
+           // Для сетевой игры
     std::optional<ShotResult> setShot(const QString& index);
     void setResult(const QString& result, const QString& index);
 
@@ -53,18 +53,19 @@ class ModelAdapter : public QObject {
     void turnStatusChanged();
     void playerFieldUpdated();
     void updateGameButtonState();
+    void shotRequested(int index);
 
   private:
     void checkWinCondition();
     void updateTurnStatus();
 
-    Model   _playerField;   // Поле игрока (с кораблями игрока)
-    Model   _enemyField;    // Поле противника (куда стреляет игрок)
-    bool    _gameWon;
-    bool    _gameOver;
-    bool    _playerFieldBlocked = false;
+    Model   _playerField;
+    Model   _enemyField;
+    bool    _gameWon = false;
+    bool    _gameOver = false;
+    bool    _playerFieldBlocked = true;
+    bool    _gameStarted = false;
     QString _turnStatus;
-    bool    _game_started = false;
 };
 
 #endif // MODEL_ADAPTER_HPP
