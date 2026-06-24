@@ -188,6 +188,17 @@ void MessengerBackend::receiveMessage(const QString &sender, const QString &text
     if (!messageParts.empty() && messageParts[0] == "result" && messageParts.size() == 3) {
         qDebug() << "Получен результат:" << messageParts[1] << "индекс:" << messageParts[2];
         _gameModel->setResult(messageParts[1], messageParts[2]);
+        int res = messageParts[1].toInt();
+        if (res == Result::Miss) {
+            // Промах - ход переходит к противнику
+            _gameModel->setMyTurn(false);
+            _gameModel->setPlayerFieldBlocked(true);
+        } else {
+            // Попадание - ход остается у нас
+            _gameModel->setMyTurn(true);
+            _gameModel->setPlayerFieldBlocked(false);
+        }
+        _gameModel->updateGameStatus();
         return;
     }
 
@@ -200,6 +211,8 @@ void MessengerBackend::receiveMessage(const QString &sender, const QString &text
         emit messagesChanged();
         return;
     } else if (text == "game_start") {
+        _gameModel->setMyTurn(false);
+        _gameModel->setGameStarted(true);
         emit newMessageReceived(sender, text);
         emit updateGameButtonState();
         _messages.append(msg);

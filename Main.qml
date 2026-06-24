@@ -61,9 +61,6 @@ ApplicationWindow {
         clientReady = false
         gameStarted = false
         playerReady = false
-        if (model) {
-            model.shipPlacing()
-        }
         updateGameButtonState()
         shipPlacement.enabled = true
         updateAllCells()
@@ -517,9 +514,15 @@ ApplicationWindow {
 
                                     MouseArea {
                                         anchors.fill: parent
-                                        enabled: root.model && !root.model.isPlayerFieldBlocked()
+                                        enabled: true//root.model && root.model.isGameStarted() && root.model.isMyTurn() && !root.model.isGameOver()
                                         onClicked: {
-                                            backend.shotMessage(index)
+                                            console.log("Клик по клетке поля противника:", index)
+                                            console.log("isGameStarted=", root.model.isGameStarted())
+                                            console.log("isMyTurn=", root.model.isMyTurn())
+                                            console.log("isGameOver=", root.model.isGameOver())
+                                            if (root.model && root.model.isGameStarted() && root.model.isMyTurn()) {
+                                                root.model.shot(index)
+                                            }
                                         }
                                     }
 
@@ -622,6 +625,7 @@ ApplicationWindow {
                                 // Сервер начинает игру
                                 if (root.model) {
                                     console.log("СЕРВЕР: Нажата кнопка Начать игру")
+                                    root.model.setMyTurn(true)
                                     root.model.startGame()
                                     root.gameStarted = true
                                     root.playerReady = true
@@ -632,6 +636,9 @@ ApplicationWindow {
                                     playerStatusText.text = root.model.getPlayerGameStatus();
                                     turnIndicatorText.text = root.model.getTurnStatus();
                                     root.updateGameButtonState()
+                                    // Принудительно обновляем состояние поля
+                                    console.log("Сервер: isMyTurn=" + root.model.isMyTurn())
+                                    console.log("Сервер: isPlayerFieldBlocked=" + root.model.isPlayerFieldBlocked())
                                 }
                             } else {
                                 // Клиент готов
@@ -831,15 +838,17 @@ ApplicationWindow {
                     if (root.model) {
                         root.gameStarted = true
                         root.playerReady = true
-                        root.model.startGame()
+                        root.model.setMyTurn(false)
+                        root.model.setPlayerFieldBlocked(true)
+                        root.model.updateGameStatus()
                         root.updateAllCells()
                         shipPlacement.enabled = false
                         playerStatusText.text = root.model.getPlayerGameStatus()
                         turnIndicatorText.text = root.model.getTurnStatus()
-                        backend.receiveMessage("Система", "Игра началась! " +
-                                                    (root.model.isPlayerFieldBlocked() ? "Ход противника." : "Ваш ход."))
+                        backend.receiveMessage("Система", "Игра началась! Ход противника.")
                         root.updateGameButtonState()
-                        console.log("Получен game_start, gameStarted=" + root.gameStarted)
+                        console.log("Клиент: gameStarted=" + root.gameStarted +
+                                           ", isMyTurn=" + root.model.isMyTurn())
                     }
                 }
             //}
@@ -907,7 +916,7 @@ ApplicationWindow {
         }
 
         function onShotRequested(index) {
-            // Отправляем выстрел через бэкенд
+            console.log("Отправка выстрела через backend, индекс:", index)
             backend.shotMessage(String(index))
         }
     }
