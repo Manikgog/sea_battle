@@ -1,19 +1,14 @@
-#ifndef MODEL_ADAPTER_HPP
-#define MODEL_ADAPTER_HPP
+#ifndef MODEL_ADAPTER_NETWORK_HPP
+#define MODEL_ADAPTER_NETWORK_HPP
 
 #include <QObject>
 #include <QQmlEngine>
-#include <qqmlintegration.h>
-#include "model.hpp"
-#include <memory>
+#include "../core/model.hpp"
+#include "server.hpp"
+#include "client.hpp"
 
-class Server;
-class Client;
-
-class ModelAdapter : public QObject {
+class ModelAdapterNetwork : public QObject {
     Q_OBJECT
-    QML_ELEMENT
-    QML_SINGLETON
 
     Q_PROPERTY(QString botGameStatus READ getBotGameStatus NOTIFY gameStatusChanged)
     Q_PROPERTY(QString playerGameStatus READ getPlayerGameStatus NOTIFY gameStatusChanged)
@@ -23,7 +18,8 @@ class ModelAdapter : public QObject {
     Q_PROPERTY(bool isConnected READ isConnected NOTIFY connectionStatusChanged)
 
 public:
-    explicit ModelAdapter(QObject *parent = nullptr);
+    explicit ModelAdapterNetwork(QObject *parent = nullptr);
+    ~ModelAdapterNetwork();
 
     // Методы для работы с полем
     Q_INVOKABLE bool getBotCellIsShoted(int index);
@@ -88,8 +84,8 @@ private:
     bool _gameStarted = false;
     QString _playerName = "Игрок";
 
-    std::unique_ptr<Server> _server;
-    std::unique_ptr<Client> _client;
+    Server* _server = nullptr;
+    Client* _client = nullptr;
 };
 
-#endif // MODEL_ADAPTER_HPP
+#endif // MODEL_ADAPTER_NETWORK_HPP

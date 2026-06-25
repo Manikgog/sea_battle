@@ -1,5 +1,5 @@
 #include "bot.hpp"
-#include "utils.hpp"
+#include "../core/utils.hpp"
 
 
 Bot::Bot() {

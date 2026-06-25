@@ -2,18 +2,16 @@
 #include <QQmlApplicationEngine>
 #include <QQmlContext>
 #include <QIcon>
-#include "model_adapter.hpp"
+#include "local/model_adapter_local.hpp"
+#include "network/model_adapter_network.hpp"
 
 int main(int argc, char *argv[]) {
     QGuiApplication app(argc, argv);
     app.setWindowIcon(QIcon(":/icon/sea_battle.ico"));
 
-    qmlRegisterSingletonType<ModelAdapter>("sea_battle", 1, 0, "ModelAdapter",
-                                           [](QQmlEngine *engine, QJSEngine *scriptEngine) -> QObject* {
-                                               Q_UNUSED(engine)
-                                               Q_UNUSED(scriptEngine)
-                                               return new ModelAdapter();
-                                           });
+    // Регистрируем типы вручную
+    qmlRegisterType<ModelAdapterLocal>("sea_battle_combined", 1, 0, "ModelAdapterLocal");
+    qmlRegisterType<ModelAdapterNetwork>("sea_battle_combined", 1, 0, "ModelAdapterNetwork");
 
     QQmlApplicationEngine engine;
 
@@ -24,7 +22,7 @@ int main(int argc, char *argv[]) {
         []() { QCoreApplication::exit(-1); },
         Qt::QueuedConnection);
 
-    engine.loadFromModule("sea_battle", "Main");
+    engine.loadFromModule("sea_battle_combined", "Main");
 
     return app.exec();
 }

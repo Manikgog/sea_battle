@@ -1,45 +1,51 @@
-#include "model_adapter.hpp"
+#include "model_adapter_network.hpp"
 #include "server.hpp"
 #include "client.hpp"
 #include <QDebug>
 #include <QTimer>
 
-ModelAdapter::ModelAdapter(QObject *parent)
+ModelAdapterNetwork::ModelAdapterNetwork(QObject *parent)
     : QObject(parent) {
     _model.automaticShipsPlacing();
     _playerModel.automaticShipsPlacing();
     updateStatus();
 }
 
-bool ModelAdapter::getBotCellIsShoted(int index) {
+// Добавьте определение деструктора
+ModelAdapterNetwork::~ModelAdapterNetwork() {
+    delete _server;
+    delete _client;
+}
+
+bool ModelAdapterNetwork::getBotCellIsShoted(int index) {
     if (index < 0 || index >= static_cast<int>(_model.getPlayingField().size())) {
         return false;
     }
     return _model.getPlayingField()[index]._isShoted;
 }
 
-bool ModelAdapter::getBotCellIsOccupied(int index) {
+bool ModelAdapterNetwork::getBotCellIsOccupied(int index) {
     if (index < 0 || index >= static_cast<int>(_model.getPlayingField().size())) {
         return false;
     }
     return _model.getPlayingField()[index]._isOccupied;
 }
 
-bool ModelAdapter::getPlayerCellIsOccupied(int index) {
+bool ModelAdapterNetwork::getPlayerCellIsOccupied(int index) {
     if (index < 0 || index >= static_cast<int>(_playerModel.getPlayingField().size())) {
         return false;
     }
     return _playerModel.getPlayingField()[index]._isOccupied;
 }
 
-bool ModelAdapter::getPlayerCellIsShoted(int index) {
+bool ModelAdapterNetwork::getPlayerCellIsShoted(int index) {
     if (index < 0 || index >= static_cast<int>(_playerModel.getPlayingField().size())) {
         return false;
     }
     return _playerModel.getPlayingField()[index]._isShoted;
 }
 
-void ModelAdapter::shot(int index) {
+void ModelAdapterNetwork::shot(int index) {
     if (_gameWon || _gameOver || !_gameStarted) {
         return;
     }
@@ -94,7 +100,7 @@ void ModelAdapter::shot(int index) {
     updateStatus();
 }
 
-void ModelAdapter::newGame() {
+void ModelAdapterNetwork::newGame() {
     _model.reset();
     _model.automaticShipsPlacing();
     _playerModel.reset();
@@ -121,24 +127,24 @@ void ModelAdapter::newGame() {
     qDebug() << "New game started";
 }
 
-bool ModelAdapter::startServer(int port) {
+bool ModelAdapterNetwork::startServer(int port) {
     if (_isConnected) {
         disconnectFromServer();
     }
 
-    _server = std::make_unique<Server>(this);
+    _server = new Server(this);
 
-    connect(_server.get(), &Server::playerConnected,
-            this, &ModelAdapter::onConnected);
-    connect(_server.get(), &Server::playerDisconnected,
-            this, &ModelAdapter::onDisconnected);
-    connect(_server.get(), &Server::clientReady,
-            this, &ModelAdapter::onOpponentReady);
-    connect(_server.get(), &Server::moveReceived,
+    connect(_server, &Server::playerConnected,
+            this, &ModelAdapterNetwork::onConnected);
+    connect(_server, &Server::playerDisconnected,
+            this, &ModelAdapterNetwork::onDisconnected);
+    connect(_server, &Server::clientReady,
+            this, &ModelAdapterNetwork::onOpponentReady);
+    connect(_server, &Server::moveReceived,
             this, [this](const QJsonObject& move) {
                 onOpponentMove(move);
             });
-    connect(_server.get(), &Server::error,
+    connect(_server, &Server::error,
             this, [this](const QString& error) {
                 emit gameMessage("Ошибка сервера: " + error);
             });
@@ -159,18 +165,18 @@ bool ModelAdapter::startServer(int port) {
     return false;
 }
 
-bool ModelAdapter::connectToServer(const QString& address, int port) {
+bool ModelAdapterNetwork::connectToServer(const QString& address, int port) {
     if (_isConnected) {
         disconnectFromServer();
     }
 
-    _client = std::make_unique<Client>(this);
+    _client = new Client(this);
 
-    connect(_client.get(), &Client::connected,
-            this, &ModelAdapter::onConnected);
-    connect(_client.get(), &Client::disconnected,
-            this, &ModelAdapter::onDisconnected);
-    connect(_client.get(), &Client::gameStarted,
+    connect(_client, &Client::connected,
+            this, &ModelAdapterNetwork::onConnected);
+    connect(_client, &Client::disconnected,
+            this, &ModelAdapterNetwork::onDisconnected);
+    connect(_client, &Client::gameStarted,
             this, [this]() {
                 _gameStarted = true;
                 _isMyTurn = false;
@@ -178,11 +184,11 @@ bool ModelAdapter::connectToServer(const QString& address, int port) {
                 emit gameMessage("Игра началась! Ход противника");
                 updateStatus();
             });
-    connect(_client.get(), &Client::moveReceived,
-            this, &ModelAdapter::onOpponentMove);
-    connect(_client.get(), &Client::gameEnded,
-            this, &ModelAdapter::onGameEnded);
-    connect(_client.get(), &Client::error,
+    connect(_client, &Client::moveReceived,
+            this, &ModelAdapterNetwork::onOpponentMove);
+    connect(_client, &Client::gameEnded,
+            this, &ModelAdapterNetwork::onGameEnded);
+    connect(_client, &Client::error,
             this, [this](const QString& error) {
                 emit gameMessage("Ошибка клиента: " + error);
             });
@@ -203,14 +209,16 @@ bool ModelAdapter::connectToServer(const QString& address, int port) {
     return false;
 }
 
-void ModelAdapter::disconnectFromServer() {
+void ModelAdapterNetwork::disconnectFromServer() {
     if (_server) {
         _server->stop();
-        _server.reset();
+        delete _server;
+        _server = nullptr;
     }
     if (_client) {
         _client->disconnect();
-        _client.reset();
+        delete _client;
+        _client = nullptr;
     }
     _isServer = false;
     _isClient = false;
@@ -224,18 +232,18 @@ void ModelAdapter::disconnectFromServer() {
     updateStatus();
 }
 
-void ModelAdapter::setPlayerName(const QString& name) {
+void ModelAdapterNetwork::setPlayerName(const QString& name) {
     _playerName = name;
     if (_client) {
         _client->sendReady(name);
     }
 }
 
-QString ModelAdapter::getPlayerName() const {
+QString ModelAdapterNetwork::getPlayerName() const {
     return _playerName;
 }
 
-void ModelAdapter::onConnected() {
+void ModelAdapterNetwork::onConnected() {
     _isConnected = true;
     emit connectionStatusChanged();
 
@@ -251,16 +259,18 @@ void ModelAdapter::onConnected() {
     updateStatus();
 }
 
-void ModelAdapter::onDisconnected() {
+void ModelAdapterNetwork::onDisconnected() {
     _isConnected = false;
     _gameStarted = false;
     emit connectionStatusChanged();
     emit gameMessage("Соединение разорвано");
 
     if (_isServer) {
-        _server.reset();
+        delete _server;
+        _server = nullptr;
     } else {
-        _client.reset();
+        delete _client;
+        _client = nullptr;
     }
     _isServer = false;
     _isClient = false;
@@ -268,7 +278,7 @@ void ModelAdapter::onDisconnected() {
     updateStatus();
 }
 
-void ModelAdapter::onOpponentReady() {
+void ModelAdapterNetwork::onOpponentReady() {
     _opponentReady = true;
     emit opponentReady();
 
@@ -285,7 +295,7 @@ void ModelAdapter::onOpponentReady() {
     }
 }
 
-void ModelAdapter::onOpponentMove(const QJsonObject& move) {
+void ModelAdapterNetwork::onOpponentMove(const QJsonObject& move) {
     if (!_gameStarted) {
         return;
     }
@@ -309,7 +319,7 @@ void ModelAdapter::onOpponentMove(const QJsonObject& move) {
     updateStatus();
 }
 
-void ModelAdapter::processOpponentMove(int index) {
+void ModelAdapterNetwork::processOpponentMove(int index) {
     auto& field = const_cast<std::vector<Cell>&>(_model.getPlayingField());
     if (index >= 0 && index < static_cast<int>(field.size())) {
         auto& cell = field[index];
@@ -329,7 +339,7 @@ void ModelAdapter::processOpponentMove(int index) {
     }
 }
 
-void ModelAdapter::sendMoveToOpponent(int index, bool hit, bool destroyed) {
+void ModelAdapterNetwork::sendMoveToOpponent(int index, bool hit, bool destroyed) {
     QJsonObject move;
     move["index"] = index;
     move["hit"] = hit;
@@ -342,7 +352,7 @@ void ModelAdapter::sendMoveToOpponent(int index, bool hit, bool destroyed) {
     }
 }
 
-void ModelAdapter::onGameEnded(const QString& winner) {
+void ModelAdapterNetwork::onGameEnded(const QString& winner) {
     _gameOver = true;
     _gameStarted = false;
     emit gameMessage("Игра окончена! Победитель: " + winner);
@@ -355,14 +365,14 @@ void ModelAdapter::onGameEnded(const QString& winner) {
     updateStatus();
 }
 
-void ModelAdapter::endGame(const QString& winner) {
+void ModelAdapterNetwork::endGame(const QString& winner) {
     if (_server) {
         _server->sendGameEnded(winner);
     }
     onGameEnded(winner);
 }
 
-QString ModelAdapter::getBotGameStatus() {
+QString ModelAdapterNetwork::getBotGameStatus() {
     if (!_gameStarted) {
         return "Ожидание начала игры...";
     }
@@ -381,7 +391,7 @@ QString ModelAdapter::getBotGameStatus() {
     return QString("Корабли уничтожены: %1 / %2").arg(shipsDestroyed).arg(totalShips);
 }
 
-QString ModelAdapter::getPlayerGameStatus() {
+QString ModelAdapterNetwork::getPlayerGameStatus() {
     if (!_gameStarted) {
         return "Ожидание начала игры...";
     }
@@ -400,7 +410,7 @@ QString ModelAdapter::getPlayerGameStatus() {
     return QString("Корабли уничтожены: %1 / %2").arg(shipsDestroyed).arg(totalShips);
 }
 
-QString ModelAdapter::getGameStatusText() {
+QString ModelAdapterNetwork::getGameStatusText() {
     if (_isServer) {
         return "Сервер" + QString(_isMyTurn ? " (Ваш ход)" : " (Ход противника)");
     } else if (_isClient) {
@@ -409,11 +419,11 @@ QString ModelAdapter::getGameStatusText() {
     return "Не подключен";
 }
 
-void ModelAdapter::updateStatus() {
+void ModelAdapterNetwork::updateStatus() {
     emit gameStatusChanged();
 }
 
-void ModelAdapter::checkWinCondition() {
+void ModelAdapterNetwork::checkWinCondition() {
     bool playerLost = _model.isAllShipsIsDestroyed();
     bool playerWon = _playerModel.isAllShipsIsDestroyed();
 

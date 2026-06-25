@@ -3,11 +3,11 @@
 
 #include <QDebug>
 #include <set>
-#include "model.hpp"
+#include "../core/model.hpp"
 
 class Bot {
 
-  public:
+public:
 
     Bot();
 
@@ -25,7 +25,7 @@ class Bot {
 
     Model _model;               // класс с картой кораблей игрока, то есть по которому будет стрелять компьютер (бот)
 
-  private:
+private:
     /**
      * @brief isAllIndexesTrue проверка на случай если все клетки уже обстреляны
      * @return

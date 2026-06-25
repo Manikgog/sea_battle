@@ -267,6 +267,13 @@ int Model::getShipsAmount() const {
 
 
 
+int Model::getDestroyedShipsAmount() const
+{
+    return _ships.size() - getShipsAmount();
+}
+
+
+
 /**
  * @brief placingLeft метод для пометки всех точек в радиусе одной клетки вокруг для запрещения размещения кораблей
  * @param index индекс точки в векторе _playingField
