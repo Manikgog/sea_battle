@@ -1,9 +1,9 @@
 #include <QtTest>
 #include <QDebug>
 
-#include "../model.hpp"
-#include "../utils.hpp"
-#include "../bot.hpp"
+#include "../core/model.hpp"
+#include "../core/utils.hpp"
+#include "../local/bot.hpp"
 
 class Test : public QObject
 {

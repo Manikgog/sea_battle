@@ -93,6 +93,23 @@ QStringList MessengerBackend::messageTimes() const
 
 
 
+QVariantList MessengerBackend::messageObjects() const
+{
+    QVariantList result;
+    for (const Message &msg : _messages) {
+        QVariantMap map;
+        map["sender"] = msg.sender;
+        map["text"] = msg.text;
+        map["time"] = msg.timestamp.toString("hh:mm:ss");
+        result.append(map);
+    }
+    return result;
+}
+
+
+
+
+
 
 
 
@@ -189,7 +206,7 @@ void MessengerBackend::receiveMessage(const QString &sender, const QString &text
         return;
     }
 
-           // Обработка результата выстрела
+    // Обработка результата выстрела
     if (!messageParts.empty() && messageParts[0] == "result" && messageParts.size() == 3) {
         qDebug() << "Получен результат:" << messageParts[1] << "индекс:" << messageParts[2];
         _gameModel->setResult(messageParts[1], messageParts[2]);

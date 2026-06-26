@@ -21,6 +21,7 @@ class MessengerBackend : public QObject
     Q_PROPERTY(QString currentUser READ currentUser WRITE setCurrentUser NOTIFY currentUserChanged)
     Q_PROPERTY(QStringList messages READ messages NOTIFY messagesChanged)
     Q_PROPERTY(QStringList messageSenders READ messageSenders NOTIFY messagesChanged)
+    Q_PROPERTY(QVariantList messageObjects READ messageObjects NOTIFY messagesChanged)
     Q_PROPERTY(QStringList messageTimes READ messageTimes NOTIFY messagesChanged)
     Q_PROPERTY(NetworkManager* networkManager READ networkManager CONSTANT)
     Q_PROPERTY(bool isConnected READ isConnected NOTIFY isConnectedChanged)
@@ -35,6 +36,7 @@ class MessengerBackend : public QObject
     QStringList messages() const;
     QStringList messageSenders() const;
     QStringList messageTimes() const;
+    QVariantList messageObjects() const;
     NetworkManager* networkManager() const { return _networkManager; }
     bool isConnected() const { return _networkManager->isConnected(); }
     Q_INVOKABLE ModelAdapterNetwork* gameModel() const { return _gameModel; }
@@ -58,10 +60,10 @@ class MessengerBackend : public QObject
   private:
     void sendShotResultMessage(Result shot_result, int index);
 
-    QString         _currentUser;
-    QList<Message>  _messages;
-    NetworkManager  *_networkManager;
-    ModelAdapterNetwork    *_gameModel;
+    QString                 _currentUser;
+    QList<Message>          _messages;
+    NetworkManager          *_networkManager;
+    ModelAdapterNetwork     *_gameModel;
 };
 
 #endif // MESSENGERBACKEND_H

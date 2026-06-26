@@ -19,6 +19,7 @@ qt_add_executable(appsea_battle_combined
     network/messenger_backend.cpp
 )
 
+
 qt_add_qml_module(appsea_battle_combined
     URI sea_battle_combined
     VERSION 1.0
@@ -73,3 +74,7 @@ install(TARGETS appsea_battle_combined
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
 )
+
+add_subdirectory(Test)
+
+enable_testing()

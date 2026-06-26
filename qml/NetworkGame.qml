@@ -701,13 +701,28 @@ Item {
                 anchors.margins: 10
                 spacing: 10
                 clip: true
-                model: backend.messages
+                model: backend.messageObjects
 
-                delegate: MessegeDelegate {
-                    messageText: modelData || ""
-                    sender: backend.messageSenders[index] || ""
-                    time: backend.messageTimes[index] || ""
-                    isOwnMessage: sender === backend.currentUser
+                delegate: Item {
+                    width: ListView.view.width
+                    height: messageDelegate.height
+
+                    MessegeDelegate {
+                        id: messageDelegate
+                        anchors {
+                            left: parent.left
+                            right: parent.right
+                        }
+                        messageData: {
+                            // Безопасное получение данных
+                            if (!model || !modelData) return {sender: "", text: "", time: ""};
+                            return modelData;
+                        }
+                        isOwnMessage: {
+                            if (!messageData || !messageData.sender) return false;
+                            return messageData.sender === backend.currentUser && messageData.sender !== "Система";
+                        }
+                    }
                 }
 
                 ScrollBar.vertical: ScrollBar {
@@ -965,10 +980,10 @@ Item {
             backend.shotMessage(String(index))
         }
 
-        // function onUndateGameButtonState() {
-        //     console.log("Отправка выстрела через backend, индекс:", index)
-        //     updateGameButtonState()
-        // }
+        function onUpdateGameButtonState() {
+            console.log("Получен сигнал updateGameButtonState от модели")
+            root.updateGameButtonState()
+        }
     }
 
     Component.onCompleted: {

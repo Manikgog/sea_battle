@@ -4,8 +4,8 @@ import QtQuick.Layouts
 
 Window {
     id: root
-    width: 800
-    height: 600
+    width: 560
+    height: 1000
     visible: true
     title: qsTr("Морской бой")
 

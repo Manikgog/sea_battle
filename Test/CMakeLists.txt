@@ -16,8 +16,8 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 add_executable(Test
     test.cpp
-    ${CMAKE_SOURCE_DIR}/model.cpp
-    ${CMAKE_SOURCE_DIR}/bot.cpp
+    ${CMAKE_SOURCE_DIR}/core/model.cpp
+    ${CMAKE_SOURCE_DIR}/local/bot.cpp
 )
 add_test(NAME Test COMMAND getPointTest)
 
