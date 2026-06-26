@@ -276,7 +276,6 @@ void ModelAdapterNetwork::startGame() {
     _isMyTurn = true;
     _playerFieldBlocked = false;
     _turnStatus = "Ваш ход!";
-
     qDebug() << "=== startGame() ===";
     qDebug() << "_gameStarted =" << _gameStarted;
     qDebug() << "_isMyTurn =" << _isMyTurn;

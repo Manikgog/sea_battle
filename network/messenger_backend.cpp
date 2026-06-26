@@ -192,13 +192,14 @@ void MessengerBackend::receiveMessage(const QString &sender, const QString &text
         int index = messageParts[1].toInt(&ok);
         if (ok) {
             // Применяем выстрел к полю игрока
-            std::optional<ShotResult> result = _gameModel->setShot(messageParts[1]);
+            std::optional<ShotResult> result = _gameModel->setShot(QString::number(index));
             if (result.has_value()) {
                 // Отправляем результат обратно
                 sendShotResultMessage(result.value()._result, result.value()._index);
                 if(_gameModel->isGameOver()) {
                     sendMessage("game_over");
-                    _gameModel->resetGame();
+                    _gameModel->gameOver();
+                    _gameModel->endGameState();
                     updateGameButtonState();
                 }
             }
@@ -248,6 +249,7 @@ void MessengerBackend::receiveMessage(const QString &sender, const QString &text
     } else if(text == "game_over") {
         _gameModel->gameWon();
         _gameModel->setEnemyShipsDestroyed(0);
+
         return;
     }
 

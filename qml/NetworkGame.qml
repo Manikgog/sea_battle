@@ -134,7 +134,7 @@ Item {
 
     // Функция для обновления конкретной клетки поля бота
     function updateEnemyCell(index) {
-        var item = botGridRepeater.itemAt(index);
+        var item = enemyGridRepeater.itemAt(index);
         if (item) {
             item.color = item.getCellColor(index);
             var textItem = item.children[0];
@@ -146,7 +146,7 @@ Item {
     }
 
     function clearEnemyCell(index) {
-        var item = botGridRepeater.itemAt(index);
+        var item = enemyGridRepeater.itemAt(index);
         if (item) {
             var textItem = item.children[0];
             if (textItem) {
@@ -174,6 +174,12 @@ Item {
         for (var i = 0; i < 100; i++) {
             updatePlayerCell(i);
             updateEnemyCell(i);
+        }
+    }
+
+    function clearAllCells() {
+        for (var i = 0; i < 100; i++) {
+            clearEnemyCell(i)
         }
     }
 
@@ -590,6 +596,7 @@ Item {
                                 root.updateAllCells();
                                 playerStatusText.text = root.model.getPlayerGameStatus();
                                 turnIndicatorText.text = root.model.getTurnStatus();
+                                root.updateGameButtonState()
                             }
                         }
                     }
@@ -622,7 +629,7 @@ Item {
                             spacing: 2
 
                             Repeater {
-                                id: botGridRepeater
+                                id: enemyGridRepeater
                                 model: 100
 
                                 Rectangle {
@@ -767,6 +774,7 @@ Item {
                                         root.updateGameButtonState()
                                         console.log("Сервер: isMyTurn=" + root.model.isMyTurn())
                                         console.log("Сервер: isPlayerFieldBlocked=" + root.model.isPlayerFieldBlocked())
+                                        clearAllCells()
                                     }
                                 } else {
                                     if (root.model) {
@@ -778,6 +786,7 @@ Item {
                                         turnIndicatorText.text = root.model.getTurnStatus()
                                         shipPlacementButton.enabled = false
                                         root.updateGameButtonState()
+                                        clearAllCells()
                                     }
                                 }
                             }
@@ -1078,6 +1087,10 @@ Item {
         function onUpdateGameButtonState() {
             console.log("Получен сигнал updateGameButtonState от модели")
             root.updateGameButtonState()
+        }
+
+        function onEndGameState() {
+            shipPlacementButton.enabled = true
         }
     }
 

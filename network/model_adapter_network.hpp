@@ -99,6 +99,7 @@ class ModelAdapterNetwork : public QObject {
         emit gameStatusChanged();
         emit playerFieldUpdated();
         emit updateGameButtonState();
+        emit endGameState();
 
         qDebug() << "=== Игра сброшена ===";
     }
@@ -108,10 +109,26 @@ class ModelAdapterNetwork : public QObject {
         _gameWon = true;
         _gameOver = true;
         _playerFieldBlocked = true;
+        _gameStarted = false;
         _turnStatus = "🏆 ПОБЕДА! 🏆";
         emit turnStatusChanged();
         emit gameStatusChanged();
         emit gameWonSignal();
+        emit updateGameButtonState();
+        emit endGameState();
+    }
+
+    Q_INVOKABLE void gameOver_() {
+        _gameWon = false;
+        _gameOver = true;
+        _playerFieldBlocked = true;
+        _gameStarted = false;
+        _turnStatus = "🏆 ВЫ ПРОИГРАЛИ! 🏆";
+        emit turnStatusChanged();
+        emit gameStatusChanged();
+        emit gameWonSignal();
+        emit updateGameButtonState();
+        emit endGameState();
     }
 
     void increaseEnemyShipsDestroyed() {
@@ -131,6 +148,7 @@ class ModelAdapterNetwork : public QObject {
     void playerFieldUpdated();
     void updateGameButtonState();
     void shotRequested(int index);
+    void endGameState();
 
   private:
     void checkWinCondition();
