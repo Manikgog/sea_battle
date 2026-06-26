@@ -12,6 +12,9 @@ enum Side {
 };
 
 
+class Test;
+
+
 class Model {
 
   public:
@@ -21,13 +24,8 @@ class Model {
     void reset();
 
     Point getPoint(int number);
-    bool isCellFree(int row, int column);
     const std::vector<Cell>& getPlayingField() const;
-    bool automaticPlacingShip(int cells);
-    bool placingLeft(int row, int column, int cells);
-    bool placingRight(int row, int column, int cells);
-    bool placingUp(int row, int column, int cells);
-    bool placingDown(int row, int column, int cells);
+
     const std::vector<Ship>& getShips() const;
     int getDestroyedShipsAmount() const;
     int getRows() {
@@ -38,7 +36,13 @@ class Model {
     }
 
   private:
-
+    friend class Test;
+    bool automaticPlacingShip(int cells);
+    bool isCellFree(int row, int column);
+    bool placingLeft(int row, int column, int cells);
+    bool placingRight(int row, int column, int cells);
+    bool placingUp(int row, int column, int cells);
+    bool placingDown(int row, int column, int cells);
     void markNotAllowedPlacingPoint(int column, int row, Side side, int cells);
     void addShip(int row, int column, Side side, int cells);
 

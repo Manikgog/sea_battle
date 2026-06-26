@@ -2,6 +2,7 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 import QtQuick.Dialogs
+import QtQuick.LocalStorage 2.0
 
 Item {
     id: root
@@ -24,15 +25,81 @@ Item {
         updateGameButtonState()
     }
 
+    // Функции для работы с localStorage
+    function getStorage() {
+        return LocalStorage.openDatabaseSync("SeaBattleSettings", "1.0", "Settings", 1000000)
+    }
 
+    function getLastAddress() {
+        try {
+            var db = getStorage()
+            db.transaction(function(tx) {
+                tx.executeSql('CREATE TABLE IF NOT EXISTS settings(key TEXT PRIMARY KEY, value TEXT)')
+            })
+            var result = ""
+            db.transaction(function(tx) {
+                var rs = tx.executeSql('SELECT value FROM settings WHERE key = "lastAddress"')
+                if (rs.rows.length > 0) {
+                    result = rs.rows.item(0).value
+                }
+            })
+            return result || "127.0.0.1"
+        } catch(e) {
+            console.warn("Failed to read lastAddress:", e)
+            return "127.0.0.1"
+        }
+    }
+
+    function getLastPort() {
+        try {
+            var db = getStorage()
+            db.transaction(function(tx) {
+                tx.executeSql('CREATE TABLE IF NOT EXISTS settings(key TEXT PRIMARY KEY, value TEXT)')
+            })
+            var result = ""
+            db.transaction(function(tx) {
+                var rs = tx.executeSql('SELECT value FROM settings WHERE key = "lastPort"')
+                if (rs.rows.length > 0) {
+                    result = rs.rows.item(0).value
+                }
+            })
+            return result || "8080"
+        } catch(e) {
+            console.warn("Failed to read lastPort:", e)
+            return "8080"
+        }
+    }
+
+    function saveLastAddress(address) {
+        try {
+            var db = getStorage()
+            db.transaction(function(tx) {
+                tx.executeSql('CREATE TABLE IF NOT EXISTS settings(key TEXT PRIMARY KEY, value TEXT)')
+                tx.executeSql('INSERT OR REPLACE INTO settings(key, value) VALUES("lastAddress", ?)', [address])
+            })
+        } catch(e) {
+            console.warn("Failed to save lastAddress:", e)
+        }
+    }
+
+    function saveLastPort(port) {
+        try {
+            var db = getStorage()
+            db.transaction(function(tx) {
+                tx.executeSql('CREATE TABLE IF NOT EXISTS settings(key TEXT PRIMARY KEY, value TEXT)')
+                tx.executeSql('INSERT OR REPLACE INTO settings(key, value) VALUES("lastPort", ?)', [port])
+            })
+        } catch(e) {
+            console.warn("Failed to save lastPort:", e)
+        }
+    }
+
+    // Загружаем сохраненные настройки при инициализации
+    property string lastAddress: getLastAddress()
+    property int lastPort: parseInt(getLastPort())
 
     function updateGameButtonState() {
         if (isServer) {
-            // Для сервера: кнопка "Начать игру" активна, если:
-            // - есть подключение
-            // - клиент готов (clientReady)
-            // - игра не началась
-            // - игрок еще не нажал "Начать игру" (playerReady)
             gameButton.text = "Начать игру"
             gameButton.enabled = isConnected && clientReady && !gameStarted && !playerReady
             console.log("Сервер: isConnected=" + isConnected +
@@ -42,10 +109,6 @@ Item {
                                    ", enabled=" + (isConnected && clientReady && !gameStarted && !playerReady))
             gameButton.forceActiveFocus()
         } else {
-            // Для клиента: кнопка "Готов" активна, если:
-            // - есть подключение
-            // - игрок еще не готов (playerReady)
-            // - игра не началась
             gameButton.text = "Готов"
             gameButton.enabled = isConnected && !playerReady && !gameStarted
             console.log("Клиент: isConnected=" + isConnected +
@@ -54,8 +117,6 @@ Item {
                                    ", enabled=" + (isConnected && !playerReady && !gameStarted))
         }
     }
-
-
 
     // Функция сброса состояния игры
     function resetGameState() {
@@ -71,8 +132,6 @@ Item {
         }
     }
 
-
-
     // Функция для обновления конкретной клетки поля бота
     function updateEnemyCell(index) {
         var item = botGridRepeater.itemAt(index);
@@ -86,8 +145,6 @@ Item {
         }
     }
 
-
-
     function clearEnemyCell(index) {
         var item = botGridRepeater.itemAt(index);
         if (item) {
@@ -98,8 +155,6 @@ Item {
             }
         }
     }
-
-
 
     // Функция для обновления конкретной клетки поля игрока
     function updatePlayerCell(index) {
@@ -113,8 +168,6 @@ Item {
             }
         }
     }
-
-
 
     // Функция для обновления всех клеток
     function updateAllCells() {
@@ -140,7 +193,7 @@ Item {
         // Заголовок с управлением подключением
         Rectangle {
             Layout.fillWidth: true
-            Layout.preferredHeight: 150
+            Layout.preferredHeight: 160
             color: "#2196F3"
             radius: 10
 
@@ -235,34 +288,79 @@ Item {
                     }
                 }
 
+                // Строка с настройками подключения
                 RowLayout {
                     Layout.fillWidth: true
                     spacing: 8
 
                     ComboBox {
                         id: modeCombo
-                        Layout.preferredWidth: 120
+                        Layout.preferredWidth: 100
                         model: ["Клиент", "Сервер"]
                         currentIndex: 0
                         onCurrentIndexChanged: {
                             root.isServer = currentIndex === 1
                             backend.networkManager.isServer = currentIndex === 1
-                            // Сбрасываем состояние готовности при смене роли
                             root.resetGameState()
                             shipPlacementButton.enabled = true
+                            if (currentIndex === 0) {
+                                addressField.placeholderText = "IP адрес сервера"
+                                portField.placeholderText = "Порт (8080)"
+                            } else {
+                                addressField.placeholderText = "IP адрес (0.0.0.0)"
+                                portField.placeholderText = "Порт (8080)"
+                            }
                         }
                     }
 
                     TextField {
                         id: addressField
                         Layout.fillWidth: true
-                        placeholderText: modeCombo.currentIndex === 0 ? "IP адрес сервера" : "Порт (по умолчанию 8080)"
-                        text: modeCombo.currentIndex === 0 ? "127.0.0.1" : "8080"
+                        Layout.preferredWidth: 120
+                        placeholderText: modeCombo.currentIndex === 0 ? "IP адрес сервера" : "IP адрес (0.0.0.0)"
+                        text: root.lastAddress
+                        color: "black"
+                        background: Rectangle {
+                            color: "white"
+                            radius: 5
+                        }
+                        font.pixelSize: 12
+                        onTextChanged: {
+                            if (text.trim().length > 0) {
+                                root.lastAddress = text.trim()
+                                saveLastAddress(text.trim())
+                            }
+                        }
+                    }
+
+                    TextField {
+                        id: portField
+                        Layout.preferredWidth: 65
+                        placeholderText: "Порт"
+                        text: String(root.lastPort)
+                        color: "black"
+                        background: Rectangle {
+                            color: "white"
+                            radius: 5
+                        }
+                        font.pixelSize: 12
+                        validator: IntValidator {
+                            bottom: 1
+                            top: 65535
+                        }
+                        onTextChanged: {
+                            var port = parseInt(text)
+                            if (port > 0 && port <= 65535) {
+                                root.lastPort = port
+                                saveLastPort(text)
+                            }
+                        }
                     }
 
                     Button {
                         id: connectButton
                         text: backend.isConnected ? "Отключиться" : "Подключиться"
+                        Layout.preferredWidth: 110
                         background: Rectangle {
                             color: backend.isConnected ? "#f44336" : "#4CAF50"
                             radius: 5
@@ -270,7 +368,7 @@ Item {
                         contentItem: Text {
                             text: parent.text
                             color: "white"
-                            font.pixelSize: 12
+                            font.pixelSize: 11
                             font.bold: true
                         }
                         onClicked: {
@@ -279,10 +377,15 @@ Item {
                                 root.resetGameState()
                                 shipPlacementButton.enabled = true
                             } else {
+                                var port = parseInt(portField.text) || 8080
                                 if (modeCombo.currentIndex === 0) {
-                                    backend.networkManager.connectToHost(addressField.text, 8080)
+                                    var address = addressField.text.trim()
+                                    if (address.length === 0) {
+                                        address = "127.0.0.1"
+                                    }
+                                    backend.networkManager.connectToHost(address, port)
                                 } else {
-                                    backend.networkManager.startServer(parseInt(addressField.text) || 8080)
+                                    backend.networkManager.startServer(port)
                                 }
                                 root.resetGameState()
                             }
@@ -496,14 +599,6 @@ Item {
                         border.width: 2
                         radius: 5
 
-                        // Rectangle {
-                        //     anchors.fill: parent
-                        //     color: "black"
-                        //     opacity: root.model && root.model.isPlayerFieldBlocked() ? 0.3 : 0
-                        //     visible: root.model && root.model.isPlayerFieldBlocked()
-                        //     z: 1
-                        // }
-
                         Grid {
                             anchors.centerIn: parent
                             rows: 10
@@ -533,12 +628,9 @@ Item {
 
                                     MouseArea {
                                         anchors.fill: parent
-                                        enabled: true//root.model && root.model.isGameStarted() && root.model.isMyTurn() && !root.model.isGameOver()
+                                        enabled: true
                                         onClicked: {
                                             console.log("Клик по клетке поля противника:", index)
-                                            console.log("isGameStarted=", root.model.isGameStarted())
-                                            console.log("isMyTurn=", root.model.isMyTurn())
-                                            console.log("isGameOver=", root.model.isGameOver())
                                             if (root.model && root.model.isGameStarted() && root.model.isMyTurn()) {
                                                 root.model.shot(index)
                                             }
@@ -547,12 +639,12 @@ Item {
 
                                     function getCellIsShoted(cellIndex) {
                                         if (!root.model) return false;
-                                        return root.model.getBotCellIsShoted(cellIndex);
+                                        return root.model.getEnemyCellIsShoted(cellIndex);
                                     }
 
                                     function getCellIsOccupied(cellIndex) {
                                         if (!root.model) return false;
-                                        return root.model.getBotCellIsOccupied(cellIndex);
+                                        return root.model.getEnemyCellIsOccupied(cellIndex);
                                     }
 
                                     function getCellMark(cellIndex) {
@@ -645,7 +737,6 @@ Item {
 
                             onClicked: {
                                 if (root.isServer) {
-                                    // Сервер начинает игру
                                     if (root.model) {
                                         console.log("СЕРВЕР: Нажата кнопка Начать игру")
                                         root.model.setMyTurn(true)
@@ -653,19 +744,15 @@ Item {
                                         root.gameStarted = true
                                         root.playerReady = true
                                         shipPlacementButton.enabled = false
-                                        // Отправляем клиенту сигнал о начале игры
                                         backend.sendMessage("game_start")
                                         backend.receiveMessage("Система", "Игра началась! Ваш ход.")
                                         playerStatusText.text = root.model.getPlayerGameStatus()
                                         turnIndicatorText.text = root.model.getTurnStatus()
-                                        clearEnemyCell()
                                         root.updateGameButtonState()
-                                        // Принудительно обновляем состояние поля
                                         console.log("Сервер: isMyTurn=" + root.model.isMyTurn())
                                         console.log("Сервер: isPlayerFieldBlocked=" + root.model.isPlayerFieldBlocked())
                                     }
                                 } else {
-                                    // Клиент готов
                                     if (root.model) {
                                         console.log("КЛИЕНТ: Нажата кнопка Готов")
                                         root.playerReady = true
@@ -675,13 +762,11 @@ Item {
                                         turnIndicatorText.text = root.model.getTurnStatus()
                                         shipPlacementButton.enabled = false
                                         root.updateGameButtonState()
-                                        clearEnemyCell()
                                     }
                                 }
                             }
                         }
                     }
-
                 }
             }
         }
@@ -714,7 +799,6 @@ Item {
                             right: parent.right
                         }
                         messageData: {
-                            // Безопасное получение данных
                             if (!model || !modelData) return {sender: "", text: "", time: ""};
                             return modelData;
                         }
@@ -867,49 +951,46 @@ Item {
         target: backend
         function onNewMessageReceived(sender, text) {
             console.log("onNewMessageReceived: sender=" + sender + ", text=" + text)
-            //if (sender !== backend.currentUser) {
-                if (text === "player_ready") {
-                    console.log("СЕРВЕР: Получен player_ready от клиента")
-                    root.clientReady = true
-                    console.log("СЕРВЕР: clientReady установлен в true")
-                    root.updateGameButtonState()
-                    backend.receiveMessage("Система", "Противник готов к игре!")
-                    console.log("Получен player_ready, clientReady=" + root.clientReady)
-                } else if (text === "game_start") {
-                    console.log("КЛИЕНТ: Получен game_start от сервера")
-                    if (root.model) {
-                        root.gameStarted = true
-                        root.playerReady = true
-                        root.model.setMyTurn(false)
-                        root.model.setPlayerFieldBlocked(true)
-                        root.model.updateGameStatus()
-                        root.updateAllCells()
-                        shipPlacementButton.enabled = false
-                        playerStatusText.text = root.model.getPlayerGameStatus()
-                        turnIndicatorText.text = root.model.getTurnStatus()
-                        backend.receiveMessage("Система", "Игра началась! Ход противника.")
-                        root.updateGameButtonState()
-                        console.log("Клиент: gameStarted=" + root.gameStarted +
-                                           ", isMyTurn=" + root.model.isMyTurn())
-                    }
-                } else if (text === "game_over") {
-                    if (root.model) {
-                        root.gameStarted = false
-                        root.playerReady = false
-                        root.model.setMyTurn(false)
-                        root.model.setPlayerFieldBlocked(true)
-                        root.model.updateGameStatus()
-                        root.updateAllCells()
-                        shipPlacementButton.enabled = true
-                        playerStatusText.text = root.model.getPlayerGameStatus()
-                        turnIndicatorText.text = root.model.getTurnStatus()
-                        backend.receiveMessage("Система", "Вы выиграли!")
-                        root.updateGameButtonState()
-                        gameButton.enabled = true
-                    }
-                }
 
-            //}
+            if (text === "player_ready") {
+                console.log("СЕРВЕР: Получен player_ready от клиента")
+                root.clientReady = true
+                root.updateGameButtonState()
+                backend.receiveMessage("Система", "Противник готов к игре!")
+                console.log("Получен player_ready, clientReady=" + root.clientReady)
+            } else if (text === "game_start") {
+                console.log("КЛИЕНТ: Получен game_start от сервера")
+                if (root.model) {
+                    root.gameStarted = true
+                    root.playerReady = true
+                    root.model.setMyTurn(false)
+                    root.model.setPlayerFieldBlocked(true)
+                    root.model.updateGameStatus()
+                    root.updateAllCells()
+                    shipPlacementButton.enabled = false
+                    playerStatusText.text = root.model.getPlayerGameStatus()
+                    turnIndicatorText.text = root.model.getTurnStatus()
+                    backend.receiveMessage("Система", "Игра началась! Ход противника.")
+                    root.updateGameButtonState()
+                    console.log("Клиент: gameStarted=" + root.gameStarted +
+                                       ", isMyTurn=" + root.model.isMyTurn())
+                }
+            } else if (text === "game_over") {
+                if (root.model) {
+                    root.gameStarted = false
+                    root.playerReady = false
+                    root.model.setMyTurn(false)
+                    root.model.setPlayerFieldBlocked(true)
+                    root.model.updateGameStatus()
+                    root.updateAllCells()
+                    shipPlacementButton.enabled = true
+                    playerStatusText.text = root.model.getPlayerGameStatus()
+                    turnIndicatorText.text = root.model.getTurnStatus()
+                    backend.receiveMessage("Система", "Вы выиграли!")
+                    root.updateGameButtonState()
+                    gameButton.enabled = true
+                }
+            }
         }
 
         function onUpdateGameButtonState() {
@@ -918,7 +999,7 @@ Item {
         }
     }
 
-    // обработка сигналов от модели
+    // Обработка сигналов от модели
     Connections {
         target: root.model
 
@@ -934,7 +1015,6 @@ Item {
             gameMessageDialog.open()
             turnIndicatorText.text = root.model.getTurnStatus()
             root.updateAllCells()
-            newGameButton.visible = true
         }
 
         function onGameOver() {
@@ -945,7 +1025,6 @@ Item {
             gameMessageDialog.open()
             turnIndicatorText.text = root.model.getTurnStatus()
             root.updateAllCells()
-            newGameButton.visible = true
         }
 
         function onGameStatusChanged() {
