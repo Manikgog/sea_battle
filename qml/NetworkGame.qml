@@ -8,14 +8,73 @@ Item {
     property var adapter: null
     signal backToMenu()
 
-    MessageDialog {
-        id: gameMessageDialog
-        title: "Игра окончена"
-        buttons: MessageDialog.Ok
-        onAccepted: {}
+    property var model: backend.gameModel
+    property string currentUser: backend.currentUser
+    property bool isConnected: backend.isConnected
+    property bool isServer: false
+    property bool clientReady: false
+    onClientReadyChanged: {
+        console.log("clientReady изменился на:", clientReady)
+        updateGameButtonState()
+    }
+    property bool gameStarted: false
+    property bool playerReady: false
+    onPlayerReadyChanged: {
+        console.log("playerReady изменился на:", playerReady)
+        updateGameButtonState()
     }
 
-    function updateBotCell(index) {
+
+
+    function updateGameButtonState() {
+        if (isServer) {
+            // Для сервера: кнопка "Начать игру" активна, если:
+            // - есть подключение
+            // - клиент готов (clientReady)
+            // - игра не началась
+            // - игрок еще не нажал "Начать игру" (playerReady)
+            gameButton.text = "Начать игру"
+            gameButton.enabled = isConnected && clientReady && !gameStarted && !playerReady
+            console.log("Сервер: isConnected=" + isConnected +
+                                   ", clientReady=" + clientReady +
+                                   ", gameStarted=" + gameStarted +
+                                   ", playerReady=" + playerReady +
+                                   ", enabled=" + (isConnected && clientReady && !gameStarted && !playerReady))
+            gameButton.forceActiveFocus()
+        } else {
+            // Для клиента: кнопка "Готов" активна, если:
+            // - есть подключение
+            // - игрок еще не готов (playerReady)
+            // - игра не началась
+            gameButton.text = "Готов"
+            gameButton.enabled = isConnected && !playerReady && !gameStarted
+            console.log("Клиент: isConnected=" + isConnected +
+                                   ", playerReady=" + playerReady +
+                                   ", gameStarted=" + gameStarted +
+                                   ", enabled=" + (isConnected && !playerReady && !gameStarted))
+        }
+    }
+
+
+
+    // Функция сброса состояния игры
+    function resetGameState() {
+        clientReady = false
+        gameStarted = false
+        playerReady = false
+        updateGameButtonState()
+        shipPlacementButton.enabled = true
+        updateAllCells()
+        if (model) {
+            playerStatusText.text = model.getPlayerGameStatus()
+            turnIndicatorText.text = model.getTurnStatus()
+        }
+    }
+
+
+
+    // Функция для обновления конкретной клетки поля бота
+    function updateEnemyCell(index) {
         var item = botGridRepeater.itemAt(index);
         if (item) {
             item.color = item.getCellColor(index);
@@ -27,6 +86,22 @@ Item {
         }
     }
 
+
+
+    function clearEnemyCell(index) {
+        var item = botGridRepeater.itemAt(index);
+        if (item) {
+            var textItem = item.children[0];
+            if (textItem) {
+                textItem.text = "";
+                textItem.color = "#ecf0f1";
+            }
+        }
+    }
+
+
+
+    // Функция для обновления конкретной клетки поля игрока
     function updatePlayerCell(index) {
         var item = playerGridRepeater.itemAt(index);
         if (item) {
@@ -39,10 +114,21 @@ Item {
         }
     }
 
+
+
+    // Функция для обновления всех клеток
     function updateAllCells() {
         for (var i = 0; i < 100; i++) {
-            updateBotCell(i);
             updatePlayerCell(i);
+            updateEnemyCell(i);
+        }
+    }
+
+    MessengerBackend {
+        id: backend
+        currentUser: "Абонент"
+        onNewMessageReceived: {
+            messageListView.positionViewAtEnd()
         }
     }
 
@@ -51,245 +137,601 @@ Item {
         anchors.margins: 10
         spacing: 10
 
-        RowLayout {
-            Layout.fillWidth: true
-
-            Button {
-                text: "← Назад"
-                onClicked: {
-                    if (adapter) adapter.disconnectFromServer()
-                    root.backToMenu()
-                }
-                background: Rectangle {
-                    color: "#95a5a6"
-                    radius: 8
-                }
-                contentItem: Text {
-                    text: parent.text
-                    color: "white"
-                }
-            }
-
-            Item { Layout.fillWidth: true }
-
-            Text {
-                text: adapter ? adapter.getGameStatusText() : ""
-                color: "#2c3e50"
-                font.pixelSize: 14
-                font.bold: true
-            }
-        }
-
-        RowLayout {
-            spacing: 40
-            Layout.alignment: Qt.AlignHCenter
-
-            Column {
-                spacing: 5
-                Text {
-                    text: "🚢 Ваше поле"
-                    font.pixelSize: 16
-                    font.bold: true
-                    horizontalAlignment: Text.AlignHCenter
-                    width: 250
-                    color: "#2c3e50"
-                }
-
-                Rectangle {
-                    width: 250
-                    height: 250
-                    color: "lightgray"
-                    border.color: "silver"
-                    border.width: 2
-                    radius: 5
-
-                    Grid {
-                        anchors.centerIn: parent
-                        rows: 10
-                        columns: 10
-                        spacing: 2
-
-                        Repeater {
-                            id: playerGridRepeater
-                            model: 100
-
-                            Rectangle {
-                                width: 20
-                                height: 20
-                                color: getCellColor(index)
-                                border.color: "slategray"
-                                border.width: 1
-
-                                Text {
-                                    anchors.centerIn: parent
-                                    text: getCellMark(index)
-                                    font.pixelSize: 24
-                                    font.bold: true
-                                    color: getMarkColor(index)
-                                }
-
-                                function getCellIsShoted(idx) { return adapter ? adapter.getPlayerCellIsShoted(idx) : false; }
-                                function getCellIsOccupied(idx) { return adapter ? adapter.getPlayerCellIsOccupied(idx) : false; }
-
-                                function getCellMark(idx) {
-                                    if (!adapter) return "";
-                                    if (adapter.getPlayerCellIsShoted(idx)) {
-                                        return adapter.getPlayerCellIsOccupied(idx) ? "✖" : "•";
-                                    }
-                                    return "";
-                                }
-
-                                function getMarkColor(idx) {
-                                    if (!adapter) return "black";
-                                    return adapter.getPlayerCellIsOccupied(idx) ? "red" : "";
-                                }
-
-                                function getCellColor(idx) {
-                                    if (!adapter) return "#ecf0f1";
-                                    if (adapter.getPlayerCellIsShoted(idx)) {
-                                        if (adapter.getPlayerCellIsOccupied(idx)) return "#e74c3c";
-                                    }
-                                    if (adapter.getPlayerCellIsOccupied(idx)) return "#5dade2";
-                                    return "#ecf0f1";
-                                }
-                            }
-                        }
-                    }
-                }
-
-                Rectangle {
-                    width: 250
-                    height: 40
-                    color: "#ecf0f1"
-                    radius: 8
-                    border.color: "#bdc3c7"
-                    border.width: 1
-
-                    Text {
-                        id: playerStatusText
-                        anchors.centerIn: parent
-                        text: adapter ? adapter.getPlayerGameStatus() : ""
-                        font.pixelSize: 14
-                        font.bold: true
-                        horizontalAlignment: Text.AlignHCenter
-                        color: "#2c3e50"
-                    }
-                }
-            }
-
-            Column {
-                spacing: 5
-                Text {
-                    text: "👤 Поле противника"
-                    font.pixelSize: 16
-                    font.bold: true
-                    horizontalAlignment: Text.AlignHCenter
-                    width: 250
-                    color: "#2c3e50"
-                }
-
-                Rectangle {
-                    width: 250
-                    height: 250
-                    color: "lightgray"
-                    border.color: "silver"
-                    border.width: 2
-                    radius: 5
-
-                    Grid {
-                        anchors.centerIn: parent
-                        rows: 10
-                        columns: 10
-                        spacing: 2
-
-                        Repeater {
-                            id: botGridRepeater
-                            model: 100
-
-                            Rectangle {
-                                width: 20
-                                height: 20
-                                color: getCellColor(index)
-                                border.color: "slategray"
-                                border.width: 1
-
-                                Text {
-                                    anchors.centerIn: parent
-                                    text: getCellMark(index)
-                                    font.pixelSize: 24
-                                    font.bold: true
-                                    color: getMarkColor(index)
-                                }
-
-                                MouseArea {
-                                    anchors.fill: parent
-                                    enabled: adapter && adapter.isConnected && adapter.isMyTurn
-                                    onClicked: {
-                                        if (adapter && adapter.isConnected && adapter.isMyTurn && !getCellIsShoted(index)) {
-                                            adapter.shot(index);
-                                            root.updateBotCell(index);
-                                            botStatusText.text = adapter.getBotGameStatus();
-                                            playerStatusText.text = adapter.getPlayerGameStatus();
-                                        }
-                                    }
-                                }
-
-                                function getCellIsShoted(idx) { return adapter ? adapter.getBotCellIsShoted(idx) : false; }
-                                function getCellIsOccupied(idx) { return adapter ? adapter.getBotCellIsOccupied(idx) : false; }
-
-                                function getCellMark(idx) {
-                                    if (!adapter) return "";
-                                    if (adapter.getBotCellIsShoted(idx)) {
-                                        return adapter.getBotCellIsOccupied(idx) ? "✖" : "•";
-                                    }
-                                    return "";
-                                }
-
-                                function getMarkColor(idx) {
-                                    if (!adapter) return "black";
-                                    return adapter.getBotCellIsOccupied(idx) ? "red" : "";
-                                }
-
-                                function getCellColor(idx) {
-                                    if (!adapter) return "#ecf0f1";
-                                    if (adapter.getBotCellIsShoted(idx)) {
-                                        if (adapter.getBotCellIsOccupied(idx)) return "#e74c3c";
-                                    }
-                                    return "#ecf0f1";
-                                }
-                            }
-                        }
-                    }
-                }
-
-                Rectangle {
-                    width: 250
-                    height: 40
-                    color: "#ecf0f1"
-                    radius: 8
-                    border.color: "#bdc3c7"
-                    border.width: 1
-
-                    Text {
-                        id: botStatusText
-                        anchors.centerIn: parent
-                        text: adapter ? adapter.getBotGameStatus() : ""
-                        font.pixelSize: 14
-                        font.bold: true
-                        horizontalAlignment: Text.AlignHCenter
-                        color: "#2c3e50"
-                    }
-                }
-            }
-        }
-
-        // Сетевая панель управления
+        // Заголовок с управлением подключением
         Rectangle {
             Layout.fillWidth: true
-            Layout.preferredHeight: 100
-            color: "#ecf0f1"
-            radius: 8
-            border.color: "#bdc3c7"
+            Layout.preferredHeight: 150
+            color: "#2196F3"
+            radius: 10
+
+            ColumnLayout {
+                anchors.fill: parent
+                anchors.margins: 10
+                spacing: 5
+
+                RowLayout {
+                    Layout.fillWidth: true
+                    spacing: 10
+
+                    Text {
+                        text: "📱 " + backend.currentUser
+                        color: "white"
+                        font.pixelSize: 18
+                        font.bold: true
+                    }
+
+                    Item { Layout.fillWidth: true }
+
+                    Rectangle {
+                        Layout.preferredWidth: 12
+                        Layout.preferredHeight: 12
+                        radius: 6
+                        color: backend.isConnected ? "#4CAF50" : "#f44336"
+
+                        Behavior on color {
+                            ColorAnimation { duration: 300 }
+                        }
+                    }
+
+                    Text {
+                        text: backend.isConnected ? "Подключен" : "Отключен"
+                        color: "white"
+                        font.pixelSize: 12
+                    }
+                }
+
+                // Строка для имени пользователя
+                RowLayout {
+                    Layout.fillWidth: true
+                    spacing: 8
+
+                    Label {
+                        text: "Имя:"
+                        color: "white"
+                        font.pixelSize: 12
+                    }
+
+                    TextField {
+                        id: userNameField
+                        Layout.fillWidth: true
+                        Layout.preferredWidth: 100
+                        text: backend.currentUser
+                        color: "black"
+                        background: Rectangle {
+                            color: "white"
+                            radius: 5
+                        }
+                        placeholderText: "Введите имя"
+                        font.pixelSize: 12
+                        onAccepted: {
+                            if (text.trim().length > 0) {
+                                backend.currentUser = text.trim()
+                            }
+                        }
+                        onTextChanged: {
+                            if (text.trim().length > 0) {
+                                backend.currentUser = text.trim()
+                            }
+                        }
+                    }
+
+                    Button {
+                        text: "Обновить"
+                        background: Rectangle {
+                            color: "#4CAF50"
+                            radius: 5
+                        }
+                        contentItem: Text {
+                            text: parent.text
+                            color: "white"
+                            font.pixelSize: 11
+                            font.bold: true
+                        }
+                        onClicked: {
+                            if (userNameField.text.trim().length > 0) {
+                                backend.currentUser = userNameField.text.trim()
+                            }
+                        }
+                    }
+                }
+
+                RowLayout {
+                    Layout.fillWidth: true
+                    spacing: 8
+
+                    ComboBox {
+                        id: modeCombo
+                        Layout.preferredWidth: 120
+                        model: ["Клиент", "Сервер"]
+                        currentIndex: 0
+                        onCurrentIndexChanged: {
+                            root.isServer = currentIndex === 1
+                            backend.networkManager.isServer = currentIndex === 1
+                            // Сбрасываем состояние готовности при смене роли
+                            root.resetGameState()
+                            shipPlacementButton.enabled = true
+                        }
+                    }
+
+                    TextField {
+                        id: addressField
+                        Layout.fillWidth: true
+                        placeholderText: modeCombo.currentIndex === 0 ? "IP адрес сервера" : "Порт (по умолчанию 8080)"
+                        text: modeCombo.currentIndex === 0 ? "127.0.0.1" : "8080"
+                    }
+
+                    Button {
+                        id: connectButton
+                        text: backend.isConnected ? "Отключиться" : "Подключиться"
+                        background: Rectangle {
+                            color: backend.isConnected ? "#f44336" : "#4CAF50"
+                            radius: 5
+                        }
+                        contentItem: Text {
+                            text: parent.text
+                            color: "white"
+                            font.pixelSize: 12
+                            font.bold: true
+                        }
+                        onClicked: {
+                            if (backend.isConnected) {
+                                backend.networkManager.disconnectFromHost()
+                                root.resetGameState()
+                                shipPlacementButton.enabled = true
+                            } else {
+                                if (modeCombo.currentIndex === 0) {
+                                    backend.networkManager.connectToHost(addressField.text, 8080)
+                                } else {
+                                    backend.networkManager.startServer(parseInt(addressField.text) || 8080)
+                                }
+                                root.resetGameState()
+                            }
+                        }
+                    }
+                }
+
+                Text {
+                    text: backend.networkManager.connectionStatus
+                    color: "white"
+                    font.pixelSize: 10
+                    elide: Text.ElideRight
+                    Layout.fillWidth: true
+                }
+            }
+        }
+
+        // Поля морского боя
+        ColumnLayout {
+            Layout.fillWidth: true
+            spacing: 10
+
+            // Индикатор чей ход
+            Rectangle {
+                id: turnIndicatorRect
+                Layout.alignment: Qt.AlignHCenter
+                Layout.preferredWidth: 400
+                Layout.preferredHeight: 40
+                color: "#3498db"
+                radius: 10
+                border.color: "#2c3e50"
+                border.width: 2
+
+                Text {
+                    id: turnIndicatorText
+                    anchors.centerIn: parent
+                    text: root.model ? root.model.getTurnStatus() : "Ожидание игры..."
+                    font.pixelSize: 20
+                    font.bold: true
+                    color: "white"
+                    horizontalAlignment: Text.AlignHCenter
+                }
+            }
+
+            RowLayout {
+                spacing: 40
+                Layout.alignment: Qt.AlignHCenter
+
+                // Поле игрока
+                Column {
+                    spacing: 10
+                    Text {
+                        text: "🚢 Ваше поле"
+                        font.pixelSize: 18
+                        font.bold: true
+                        horizontalAlignment: Text.AlignHCenter
+                        width: 250
+                        color: "#2c3e50"
+                    }
+
+                    Rectangle {
+                        width: 250
+                        height: 250
+                        color: "lightgray"
+                        border.color: "silver"
+                        border.width: 2
+                        radius: 5
+
+                        Grid {
+                            anchors.centerIn: parent
+                            rows: 10
+                            columns: 10
+                            spacing: 2
+
+                            Repeater {
+                                id: playerGridRepeater
+                                model: 100
+
+                                Rectangle {
+                                    id: playerCellRect
+                                    width: 20
+                                    height: 20
+                                    color: getCellColor(index)
+                                    border.color: "slategray"
+                                    border.width: 1
+
+                                    Text {
+                                        id: playerCellText
+                                        anchors.centerIn: parent
+                                        text: getCellMark(index)
+                                        font.pixelSize: 24
+                                        font.bold: true
+                                        color: getMarkColor(index)
+                                    }
+
+                                    function getCellIsShoted(cellIndex) {
+                                        if (!root.model) return false;
+                                        return root.model.getPlayerCellIsShoted(cellIndex);
+                                    }
+
+                                    function getCellIsOccupied(cellIndex) {
+                                        if (!root.model) return false;
+                                        return root.model.getPlayerCellIsOccupied(cellIndex);
+                                    }
+
+                                    function getCellMark(cellIndex) {
+                                        if (!root.model) return "";
+                                        if (root.model.getPlayerCellIsShoted(cellIndex)) {
+                                            if (root.model.getPlayerCellIsOccupied(cellIndex)) {
+                                                return "✖";
+                                            } else {
+                                                return "•";
+                                            }
+                                        }
+                                        return "";
+                                    }
+
+                                    function getMarkColor(cellIndex) {
+                                        if (!root.model) return "black";
+                                        if (root.model.getPlayerCellIsOccupied(cellIndex)) {
+                                            return "red";
+                                        }
+                                        return "black";
+                                    }
+
+                                    function getCellColor(cellIndex) {
+                                        if (!root.model) return "#ecf0f1";
+                                        if (root.model.getPlayerCellIsShoted(cellIndex)) {
+                                            if (root.model.getPlayerCellIsOccupied(cellIndex)) {
+                                                return "#e74c3c";
+                                            }
+                                        }
+                                        if (root.model.getPlayerCellIsOccupied(cellIndex)) {
+                                            return "#5dade2";
+                                        }
+                                        return "#ecf0f1";
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    Rectangle {
+                        width: 250
+                        height: 50
+                        color: "#ecf0f1"
+                        radius: 8
+                        border.color: "#bdc3c7"
+                        border.width: 1
+
+                        Text {
+                            id: playerStatusText
+                            anchors.centerIn: parent
+                            text: root.model ? root.model.getPlayerGameStatus() : "Ожидание"
+                            font.pixelSize: 16
+                            font.bold: true
+                            horizontalAlignment: Text.AlignHCenter
+                            color: "#2c3e50"
+                        }
+                    }
+
+                    Button {
+                        id: shipPlacementButton
+                        Layout.preferredWidth: 80
+                        Layout.preferredHeight: 40
+                        text: "Расставить корабли"
+                        enabled: !root.gameStarted
+
+                        background: Rectangle {
+                            color: parent.enabled ? "#2196F3" : "#b0bec5"
+                            radius: 5
+                        }
+
+                        contentItem: Text {
+                            text: parent.text
+                            color: "white"
+                            font.pixelSize: 14
+                            font.bold: true
+                            horizontalAlignment: Text.AlignHCenter
+                            verticalAlignment: Text.AlignVCenter
+                        }
+
+                        onClicked: {
+                            if (root.model) {
+                                root.model.shipPlacing();
+                                root.updateAllCells();
+                                playerStatusText.text = root.model.getPlayerGameStatus();
+                                turnIndicatorText.text = root.model.getTurnStatus();
+                            }
+                        }
+                    }
+                }
+
+                // Поле противника
+                Column {
+                    spacing: 10
+                    Text {
+                        text: "🤖 Поле противника"
+                        font.pixelSize: 18
+                        font.bold: true
+                        horizontalAlignment: Text.AlignHCenter
+                        width: 250
+                        color: "#2c3e50"
+                    }
+
+                    Rectangle {
+                        width: 250
+                        height: 250
+                        color: "lightgray"
+                        border.color: "silver"
+                        border.width: 2
+                        radius: 5
+
+                        // Rectangle {
+                        //     anchors.fill: parent
+                        //     color: "black"
+                        //     opacity: root.model && root.model.isPlayerFieldBlocked() ? 0.3 : 0
+                        //     visible: root.model && root.model.isPlayerFieldBlocked()
+                        //     z: 1
+                        // }
+
+                        Grid {
+                            anchors.centerIn: parent
+                            rows: 10
+                            columns: 10
+                            spacing: 2
+
+                            Repeater {
+                                id: botGridRepeater
+                                model: 100
+
+                                Rectangle {
+                                    id: botCellRect
+                                    width: 20
+                                    height: 20
+                                    color: getCellColor(index)
+                                    border.color: "slategray"
+                                    border.width: 1
+
+                                    Text {
+                                        id: botCellText
+                                        anchors.centerIn: parent
+                                        text: getCellMark(index)
+                                        font.pixelSize: 24
+                                        font.bold: true
+                                        color: getMarkColor(index)
+                                    }
+
+                                    MouseArea {
+                                        anchors.fill: parent
+                                        enabled: true//root.model && root.model.isGameStarted() && root.model.isMyTurn() && !root.model.isGameOver()
+                                        onClicked: {
+                                            console.log("Клик по клетке поля противника:", index)
+                                            console.log("isGameStarted=", root.model.isGameStarted())
+                                            console.log("isMyTurn=", root.model.isMyTurn())
+                                            console.log("isGameOver=", root.model.isGameOver())
+                                            if (root.model && root.model.isGameStarted() && root.model.isMyTurn()) {
+                                                root.model.shot(index)
+                                            }
+                                        }
+                                    }
+
+                                    function getCellIsShoted(cellIndex) {
+                                        if (!root.model) return false;
+                                        return root.model.getBotCellIsShoted(cellIndex);
+                                    }
+
+                                    function getCellIsOccupied(cellIndex) {
+                                        if (!root.model) return false;
+                                        return root.model.getBotCellIsOccupied(cellIndex);
+                                    }
+
+                                    function getCellMark(cellIndex) {
+                                        if (!root.model) return "";
+                                        if (root.model.getEnemyCellIsShoted(cellIndex)) {
+                                            if (root.model.getEnemyCellIsOccupied(cellIndex)) {
+                                                return "✖";
+                                            } else {
+                                                return "•";
+                                            }
+                                        }
+                                        return "";
+                                    }
+
+                                    function getMarkColor(cellIndex) {
+                                        if (!root.model) return "black";
+                                        if (root.model.getEnemyCellIsOccupied(cellIndex)) {
+                                            return "red";
+                                        }
+                                        return "black";
+                                    }
+
+                                    function getCellColor(cellIndex) {
+                                        if (!root.model) return "#ecf0f1";
+                                        if (root.model.getEnemyCellIsShoted(cellIndex)) {
+                                            if (root.model.getEnemyCellIsOccupied(cellIndex)) {
+                                                return "#e74c3c";
+                                            }
+                                        }
+                                        return "#ecf0f1";
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    Rectangle {
+                        width: 250
+                        height: 50
+                        color: "#ecf0f1"
+                        radius: 8
+                        border.color: "#bdc3c7"
+                        border.width: 1
+
+                        Text {
+                            id: enemyStatusText
+                            anchors.centerIn: parent
+                            text: root.model ? root.model.getEnemyGameStatus() : "Ожидание"
+                            font.pixelSize: 16
+                            font.bold: true
+                            horizontalAlignment: Text.AlignHCenter
+                            color: "#2c3e50"
+                        }
+                    }
+
+                    Row {
+                        spacing: 10
+                        Layout.alignment: Qt.AlignHCenter
+
+                        Button {
+                            id: gameButton
+                            Layout.preferredWidth: 80
+                            Layout.preferredHeight: 40
+                            text: root.isServer ? "Начать игру" : "Готов"
+                            enabled: {
+                                if (root.isServer) {
+                                    var result = root.isConnected && root.clientReady && !root.gameStarted && !root.playerReady
+                                    console.log("gameButton.enabled вычисление (сервер):", result)
+                                    return result
+                                } else {
+                                    var result = root.isConnected && !root.playerReady && !root.gameStarted
+                                    console.log("gameButton.enabled вычисление (клиент):", result)
+                                    return result
+                                }
+                            }
+
+                            background: Rectangle {
+                                color: parent.enabled ? "#2196F3" : "#b0bec5"
+                                radius: 5
+                            }
+
+                            contentItem: Text {
+                                text: parent.text
+                                color: "white"
+                                font.pixelSize: 14
+                                font.bold: true
+                                horizontalAlignment: Text.AlignHCenter
+                                verticalAlignment: Text.AlignVCenter
+                            }
+
+                            onClicked: {
+                                if (root.isServer) {
+                                    // Сервер начинает игру
+                                    if (root.model) {
+                                        console.log("СЕРВЕР: Нажата кнопка Начать игру")
+                                        root.model.setMyTurn(true)
+                                        root.model.startGame()
+                                        root.gameStarted = true
+                                        root.playerReady = true
+                                        shipPlacementButton.enabled = false
+                                        // Отправляем клиенту сигнал о начале игры
+                                        backend.sendMessage("game_start")
+                                        backend.receiveMessage("Система", "Игра началась! Ваш ход.")
+                                        playerStatusText.text = root.model.getPlayerGameStatus()
+                                        turnIndicatorText.text = root.model.getTurnStatus()
+                                        clearEnemyCell()
+                                        root.updateGameButtonState()
+                                        // Принудительно обновляем состояние поля
+                                        console.log("Сервер: isMyTurn=" + root.model.isMyTurn())
+                                        console.log("Сервер: isPlayerFieldBlocked=" + root.model.isPlayerFieldBlocked())
+                                    }
+                                } else {
+                                    // Клиент готов
+                                    if (root.model) {
+                                        console.log("КЛИЕНТ: Нажата кнопка Готов")
+                                        root.playerReady = true
+                                        backend.sendMessage("player_ready")
+                                        backend.receiveMessage("Система", "Вы готовы к игре. Ожидайте начала.")
+                                        playerStatusText.text = root.model.getPlayerGameStatus()
+                                        turnIndicatorText.text = root.model.getTurnStatus()
+                                        shipPlacementButton.enabled = false
+                                        root.updateGameButtonState()
+                                        clearEnemyCell()
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                }
+            }
+        }
+
+        // Список сообщений
+        Rectangle {
+            Layout.fillWidth: true
+            Layout.preferredHeight: 150
+            color: "#f5f5f5"
+            radius: 10
+            border.color: "#e0e0e0"
+            border.width: 1
+
+            ListView {
+                id: messageListView
+                anchors.fill: parent
+                anchors.margins: 10
+                spacing: 10
+                clip: true
+                model: backend.messages
+
+                delegate: MessegeDelegate {
+                    messageText: modelData || ""
+                    sender: backend.messageSenders[index] || ""
+                    time: backend.messageTimes[index] || ""
+                    isOwnMessage: sender === backend.currentUser
+                }
+
+                ScrollBar.vertical: ScrollBar {
+                    policy: ScrollBar.AsNeeded
+                }
+
+                Component.onCompleted: {
+                    positionViewAtEnd()
+                }
+
+                onCountChanged: {
+                    positionViewAtEnd()
+                }
+            }
+        }
+
+        // Поле ввода и кнопка отправки
+        Rectangle {
+            id: inputContainer
+            Layout.fillWidth: true
+            Layout.preferredHeight: 80
+            color: "white"
+            radius: 10
+            border.color: "#e0e0e0"
             border.width: 1
 
             RowLayout {
@@ -297,42 +739,37 @@ Item {
                 anchors.margins: 10
                 spacing: 10
 
-                ColumnLayout {
-                    spacing: 5
+                Rectangle {
                     Layout.fillWidth: true
+                    Layout.fillHeight: true
+                    color: "#f8f9fa"
+                    radius: 5
+                    border.color: "#dee2e6"
+                    border.width: 1
 
-                    Text {
-                        text: "Сервер"
-                        font.bold: true
+                    TextArea {
+                        id: messageInput
+                        anchors.fill: parent
+                        anchors.margins: 8
+                        placeholderText: backend.isConnected ? "Введите сообщение..." : "Подключитесь к сети для отправки сообщений"
+                        wrapMode: TextArea.Wrap
                         font.pixelSize: 14
-                    }
+                        enabled: backend.isConnected
 
-                    RowLayout {
-                        spacing: 5
-
-                        TextField {
-                            id: serverPortField
-                            text: "12345"
-                            placeholderText: "Порт"
-                            Layout.preferredWidth: 100
-                            inputMethodHints: Qt.ImhDigitsOnly
+                        Keys.onEnterPressed: {
+                            if (event.modifiers & Qt.ShiftModifier) {
+                                event.accepted = false
+                            } else {
+                                event.accepted = true
+                                sendButton.clicked()
+                            }
                         }
 
-                        Button {
-                            text: "Создать игру"
-                            onClicked: {
-                                if (adapter && adapter.startServer(parseInt(serverPortField.text))) {
-                                    statusMessageText.text = "Сервер запущен, ожидание подключения..."
-                                }
-                            }
-                            background: Rectangle {
-                                color: "#27ae60"
-                                radius: 8
-                            }
-                            contentItem: Text {
-                                text: parent.text
-                                color: "white"
-                                font.pixelSize: 12
+                        onTextChanged: {
+                            if (text && text.length > 0) {
+                                inputContainer.Layout.preferredHeight = Math.min(120, 40 + contentHeight)
+                            } else {
+                                inputContainer.Layout.preferredHeight = 80
                             }
                         }
                     }
@@ -340,152 +777,249 @@ Item {
 
                 ColumnLayout {
                     spacing: 5
-                    Layout.fillWidth: true
 
-                    Text {
-                        text: "Клиент"
-                        font.bold: true
-                        font.pixelSize: 14
+                    Button {
+                        id: sendButton
+                        Layout.preferredWidth: 80
+                        Layout.preferredHeight: 40
+                        text: "Отправить"
+                        enabled: backend.isConnected && messageInput.text && messageInput.text.trim().length > 0
+
+                        background: Rectangle {
+                            color: parent.enabled ? "#2196F3" : "#b0bec5"
+                            radius: 5
+                        }
+
+                        contentItem: Text {
+                            text: parent.text
+                            color: "white"
+                            font.pixelSize: 14
+                            font.bold: true
+                            horizontalAlignment: Text.AlignHCenter
+                            verticalAlignment: Text.AlignVCenter
+                        }
+
+                        onClicked: {
+                            if (messageInput.text) {
+                                backend.sendMessage(messageInput.text)
+                                messageInput.text = ""
+                                messageInput.forceActiveFocus()
+                            }
+                        }
                     }
 
-                    RowLayout {
-                        spacing: 5
-
-                        TextField {
-                            id: clientAddressField
-                            text: "localhost"
-                            placeholderText: "Адрес"
-                            Layout.preferredWidth: 120
-                        }
-
-                        TextField {
-                            id: clientPortField
-                            text: "12345"
-                            placeholderText: "Порт"
-                            Layout.preferredWidth: 80
-                            inputMethodHints: Qt.ImhDigitsOnly
-                        }
-
-                        TextField {
-                            id: playerNameField
-                            text: "Игрок"
-                            placeholderText: "Имя"
-                            Layout.preferredWidth: 100
-                        }
-
-                        Button {
-                            text: "Подключиться"
-                            onClicked: {
-                                if (adapter) {
-                                    adapter.setPlayerName(playerNameField.text)
-                                    if (adapter.connectToServer(clientAddressField.text,
-                                                              parseInt(clientPortField.text))) {
-                                        statusMessageText.text = "Подключение к серверу..."
-                                    }
-                                }
-                            }
-                            background: Rectangle {
-                                color: "#2980b9"
-                                radius: 8
-                            }
-                            contentItem: Text {
-                                text: parent.text
-                                color: "white"
-                                font.pixelSize: 12
-                            }
-                        }
+                    Label {
+                        text: "Shift+Enter\nдля переноса"
+                        font.pixelSize: 10
+                        color: "#757575"
+                        horizontalAlignment: Text.AlignHCenter
                     }
                 }
             }
         }
 
-        Text {
-            id: statusMessageText
+        // Статусная строка
+        Rectangle {
             Layout.fillWidth: true
             Layout.preferredHeight: 30
-            text: "Создайте игру или подключитесь к существующей"
-            font.pixelSize: 12
-            color: "#6c757d"
-            horizontalAlignment: Text.AlignHCenter
-            verticalAlignment: Text.AlignVCenter
-            wrapMode: Text.WordWrap
-        }
+            color: "#e3f2fd"
+            radius: 5
 
-        Button {
-            text: "🔄 Новая игра"
-            Layout.alignment: Qt.AlignHCenter
-            font.pixelSize: 14
-            enabled: adapter && adapter.isConnected
-            onClicked: {
-                if (adapter && adapter.isConnected) {
-                    adapter.newGame()
-                    root.updateAllCells()
-                    botStatusText.text = adapter.getBotGameStatus()
-                    playerStatusText.text = adapter.getPlayerGameStatus()
+            RowLayout {
+                anchors.fill: parent
+                anchors.margins: 10
+                spacing: 10
+
+                Label {
+                    text: "Сообщений: " + (backend.messages ? backend.messages.length : 0)
+                    font.pixelSize: 12
+                    color: "#1565c0"
                 }
-            }
-            background: Rectangle {
-                color: enabled ? (parent.pressed ? "#2980b9" : "#3498db") : "#95a5a6"
-                radius: 8
-            }
-            contentItem: Text {
-                text: parent.text
-                color: "white"
-                horizontalAlignment: Text.AlignHCenter
-                verticalAlignment: Text.AlignVCenter
-                font.pixelSize: parent.font.pixelSize
+
+                Item { Layout.fillWidth: true }
+
+                Label {
+                    text: backend.isConnected ? "🟢 Онлайн" : "🔴 Офлайн"
+                    font.pixelSize: 12
+                    color: backend.isConnected ? "#4CAF50" : "#f44336"
+                }
             }
         }
     }
 
+    // Обработка сообщений от других игроков
     Connections {
-        target: adapter
+        target: backend
+        function onNewMessageReceived(sender, text) {
+            console.log("onNewMessageReceived: sender=" + sender + ", text=" + text)
+            //if (sender !== backend.currentUser) {
+                if (text === "player_ready") {
+                    console.log("СЕРВЕР: Получен player_ready от клиента")
+                    root.clientReady = true
+                    console.log("СЕРВЕР: clientReady установлен в true")
+                    root.updateGameButtonState()
+                    backend.receiveMessage("Система", "Противник готов к игре!")
+                    console.log("Получен player_ready, clientReady=" + root.clientReady)
+                } else if (text === "game_start") {
+                    console.log("КЛИЕНТ: Получен game_start от сервера")
+                    if (root.model) {
+                        root.gameStarted = true
+                        root.playerReady = true
+                        root.model.setMyTurn(false)
+                        root.model.setPlayerFieldBlocked(true)
+                        root.model.updateGameStatus()
+                        root.updateAllCells()
+                        shipPlacementButton.enabled = false
+                        playerStatusText.text = root.model.getPlayerGameStatus()
+                        turnIndicatorText.text = root.model.getTurnStatus()
+                        backend.receiveMessage("Система", "Игра началась! Ход противника.")
+                        root.updateGameButtonState()
+                        console.log("Клиент: gameStarted=" + root.gameStarted +
+                                           ", isMyTurn=" + root.model.isMyTurn())
+                    }
+                } else if (text === "game_over") {
+                    if (root.model) {
+                        root.gameStarted = false
+                        root.playerReady = false
+                        root.model.setMyTurn(false)
+                        root.model.setPlayerFieldBlocked(true)
+                        root.model.updateGameStatus()
+                        root.updateAllCells()
+                        shipPlacementButton.enabled = true
+                        playerStatusText.text = root.model.getPlayerGameStatus()
+                        turnIndicatorText.text = root.model.getTurnStatus()
+                        backend.receiveMessage("Система", "Вы выиграли!")
+                        root.updateGameButtonState()
+                        gameButton.enabled = true
+                    }
+                }
+
+            //}
+        }
+
+        function onUpdateGameButtonState() {
+            console.log("Получен сигнал updateGameButtonState")
+            root.updateGameButtonState()
+        }
+    }
+
+    // обработка сигналов от модели
+    Connections {
+        target: root.model
+
+        function onPlayerFieldUpdated() {
+            root.updateAllCells();
+        }
+
         function onGameWon() {
-            botStatusText.text = "🏆 ПОБЕДА! 🏆"
-            botStatusText.color = "#e74c3c"
+            enemyStatusText.text = "🏆 ПОБЕДА! 🏆\nВсе корабли противника уничтожены!"
+            enemyStatusText.color = "#e74c3c"
             gameMessageDialog.title = "Победа!"
             gameMessageDialog.text = "🎉 ПОЗДРАВЛЯЕМ! 🎉\nВы уничтожили все корабли противника!"
             gameMessageDialog.open()
+            turnIndicatorText.text = root.model.getTurnStatus()
+            root.updateAllCells()
+            newGameButton.visible = true
         }
 
         function onGameOver() {
-            playerStatusText.text = "ВЫ ПРОИГРАЛИ! 💀"
+            playerStatusText.text = "ВЫ ПРОИГРАЛИ! 💀\nВсе ваши корабли уничтожены!"
             playerStatusText.color = "black"
             gameMessageDialog.title = "Игра окончена"
             gameMessageDialog.text = "😢 Вы проиграли!\nВсе ваши корабли уничтожены."
             gameMessageDialog.open()
+            turnIndicatorText.text = root.model.getTurnStatus()
+            root.updateAllCells()
+            newGameButton.visible = true
         }
 
         function onGameStatusChanged() {
-            if (!adapter) return
-            botStatusText.text = adapter.getBotGameStatus()
-            playerStatusText.text = adapter.getPlayerGameStatus()
-            for (var i = 0; i < 100; i++) {
-                root.updateBotCell(i)
-                root.updatePlayerCell(i)
-            }
+            enemyStatusText.text = root.model.getEnemyGameStatus()
+            enemyStatusText.color = "#2c3e50"
+            playerStatusText.text = root.model.getPlayerGameStatus()
+            turnIndicatorText.text = root.model.getTurnStatus()
+            root.updateAllCells()
+            root.updateGameButtonState()
         }
 
-        function onGameMessage(message) {
-            statusMessageText.text = message
-            statusMessageText.color = "#2c3e50"
-        }
-
-        function onTurnChanged(myTurn) {
-            if (myTurn) {
-                statusMessageText.text = "Ваш ход!"
-                statusMessageText.color = "#2ecc71"
+        function onTurnStatusChanged() {
+            turnIndicatorText.text = root.model.getTurnStatus()
+            var status = root.model.getTurnStatus()
+            if (status.includes("ПОБЕДА")) {
+                turnIndicatorRect.color = "#27ae60"
+            } else if (status.includes("ПРОИГРАЛИ")) {
+                turnIndicatorRect.color = "#e74c3c"
+            } else if (status.includes("Ожидание хода противника")
+                       || status.includes("Ход противника")) {
+                turnIndicatorRect.color = "#f39c12"
+            } else if(status.includes("Ваш ход")) {
+                turnIndicatorRect.color = "#2ecc71"
             } else {
-                statusMessageText.text = "Ход противника..."
-                statusMessageText.color = "#e74c3c"
+                turnIndicatorRect.color = "#3498db"
             }
+            root.updateAllCells()
         }
+
+        function onShotRequested(index) {
+            console.log("Отправка выстрела через backend, индекс:", index)
+            backend.shotMessage(String(index))
+        }
+
+        // function onUndateGameButtonState() {
+        //     console.log("Отправка выстрела через backend, индекс:", index)
+        //     updateGameButtonState()
+        // }
     }
 
     Component.onCompleted: {
-        if (adapter) {
-            botStatusText.text = adapter.getBotGameStatus()
-            playerStatusText.text = adapter.getPlayerGameStatus()
+        if (root.model) {
+            enemyStatusText.text = root.model.getEnemyGameStatus();
+            playerStatusText.text = root.model.getPlayerGameStatus();
+            turnIndicatorText.text = root.model.getTurnStatus();
+        }
+
+        root.updateGameButtonState()
+        shipPlacementButton.enabled = true
+        root.resetGameState()
+    }
+
+    // Диалог для уведомлений
+    Dialog {
+        id: gameMessageDialog
+        modal: true
+        anchors.centerIn: parent
+        width: 300
+        height: 200
+
+        ColumnLayout {
+            anchors.fill: parent
+            anchors.margins: 20
+            spacing: 15
+
+            Text {
+                id: dialogTitle
+                text: gameMessageDialog.title
+                font.pixelSize: 18
+                font.bold: true
+                horizontalAlignment: Text.AlignHCenter
+                Layout.fillWidth: true
+            }
+
+            Text {
+                id: dialogText
+                text: gameMessageDialog.text
+                font.pixelSize: 14
+                horizontalAlignment: Text.AlignHCenter
+                wrapMode: Text.WordWrap
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+            }
+
+            Button {
+                text: "OK"
+                Layout.alignment: Qt.AlignHCenter
+                onClicked: gameMessageDialog.close()
+            }
         }
     }
 }

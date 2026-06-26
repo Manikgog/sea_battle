@@ -8,7 +8,7 @@
 
 class ModelAdapterLocal : public QObject {
     Q_OBJECT
-
+    QML_ELEMENT
     Q_PROPERTY(QString botGameStatus READ getBotGameStatus NOTIFY gameStatusChanged)
     Q_PROPERTY(QString playerGameStatus READ getPlayerGameStatus NOTIFY gameStatusChanged)
 

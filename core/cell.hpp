@@ -31,4 +31,15 @@ struct Cell {
     bool    _isAllowed = true;
 };
 
+enum Result {
+    Miss        // промах
+    , Wounded   // ранен
+    , Destroyed // убит
+};
+
+struct ShotResult {
+    Result  _result;
+    int     _index;
+};
+
 #endif // CELL_HPP

@@ -3,89 +3,148 @@
 
 #include <QObject>
 #include <QQmlEngine>
+#include <qqmlintegration.h>
+#include <optional>
 #include "../core/model.hpp"
-#include "server.hpp"
-#include "client.hpp"
+#include "../core/cell.hpp"
 
 class ModelAdapterNetwork : public QObject {
     Q_OBJECT
+    QML_ELEMENT
+    Q_PROPERTY(bool gameStarted READ isGameStarted NOTIFY gameStatusChanged)
+    Q_PROPERTY(bool myTurn READ isMyTurn NOTIFY gameStatusChanged)
+    Q_PROPERTY(bool gameOver READ isGameOver NOTIFY gameStatusChanged)
+    Q_PROPERTY(bool playerFieldBlocked READ isPlayerFieldBlocked NOTIFY gameStatusChanged)
 
-    Q_PROPERTY(QString botGameStatus READ getBotGameStatus NOTIFY gameStatusChanged)
-    Q_PROPERTY(QString playerGameStatus READ getPlayerGameStatus NOTIFY gameStatusChanged)
-    Q_PROPERTY(QString gameStatusText READ getGameStatusText NOTIFY gameStatusChanged)
-    Q_PROPERTY(bool isServer READ isServer NOTIFY gameModeChanged)
-    Q_PROPERTY(bool isClient READ isClient NOTIFY gameModeChanged)
-    Q_PROPERTY(bool isConnected READ isConnected NOTIFY connectionStatusChanged)
-
-public:
+  public:
     explicit ModelAdapterNetwork(QObject *parent = nullptr);
-    ~ModelAdapterNetwork();
 
-    // Методы для работы с полем
-    Q_INVOKABLE bool getBotCellIsShoted(int index);
-    Q_INVOKABLE bool getBotCellIsOccupied(int index);
+           // Методы для поля игрока
     Q_INVOKABLE bool getPlayerCellIsOccupied(int index);
     Q_INVOKABLE bool getPlayerCellIsShoted(int index);
 
-    // Игровые методы
+           // Методы для поля противника
+    Q_INVOKABLE bool getEnemyCellIsOccupied(int index);
+    Q_INVOKABLE bool getEnemyCellIsShoted(int index);
+
     Q_INVOKABLE void shot(int index);
     Q_INVOKABLE void newGame();
-    Q_INVOKABLE QString getBotGameStatus();
     Q_INVOKABLE QString getPlayerGameStatus();
-    Q_INVOKABLE QString getGameStatusText();
+    Q_INVOKABLE QString getEnemyGameStatus();
+    Q_INVOKABLE bool isPlayerFieldBlocked() const {
+        // Если игра не началась - поле заблокировано
+        if (!_gameStarted) {
+            return true;
+        }
+        // Если игра закончена - поле заблокировано
+        if (_gameWon || _gameOver) {
+            return true;
+        }
+        // Если не наш ход - поле заблокировано
+        return !_isMyTurn;
+    }
+    Q_INVOKABLE QString getTurnStatus();
+    Q_INVOKABLE void setTurnStatus(const QString& status) {
+        _turnStatus = status;
+        emit turnStatusChanged();
+    }
+    Q_INVOKABLE void shipPlacing();
+    Q_INVOKABLE void startGame();
+    Q_INVOKABLE bool isGameStarted() const {
+        qDebug() << "isGameStarted() called, returning:" << _gameStarted;
+        return _gameStarted;
+    }
+    Q_INVOKABLE void setGameStarted(bool isStarted) {_gameStarted = isStarted;};
+    Q_INVOKABLE bool isGameOver() const {
+        return _gameWon || _gameOver;
+    }
 
-    // Сетевые методы
-    Q_INVOKABLE bool startServer(int port = 12345);
-    Q_INVOKABLE bool connectToServer(const QString& address, int port = 12345);
-    Q_INVOKABLE void disconnectFromServer();
-    Q_INVOKABLE void setPlayerName(const QString& name);
-    Q_INVOKABLE QString getPlayerName() const;
-    Q_INVOKABLE bool isServer() const { return _isServer; }
-    Q_INVOKABLE bool isClient() const { return _isClient; }
-    Q_INVOKABLE bool isConnected() const { return _isConnected; }
-    Q_INVOKABLE bool isMyTurn() const { return _isMyTurn; }
-    Q_INVOKABLE bool isGameStarted() const { return _gameStarted; }
+           // Для сетевой игры
+    std::optional<ShotResult> setShot(const QString& index);
+    void setResult(const QString& result, const QString& index);
+    Q_INVOKABLE void setMyTurn(bool isMyTurn) { _isMyTurn = isMyTurn; }
+    Q_INVOKABLE bool isMyTurn() const {
+        return _isMyTurn;
+    }
+    Q_INVOKABLE void setPlayerFieldBlocked(bool blocked) {
+        _playerFieldBlocked = blocked;
+        updateTurnStatus();
+        emit gameStatusChanged();
+    }
 
-signals:
+    Q_INVOKABLE std::vector<Cell>& getEnemyFieldRef() {
+        return const_cast<std::vector<Cell>&>(_enemyField.getPlayingField());
+    }
+
+    Q_INVOKABLE void updateGameStatus() {
+        emit gameStatusChanged();
+    }
+
+
+
+    Q_INVOKABLE void resetGame() {
+        _playerField.reset();
+        _playerField.automaticShipsPlacing();
+        _enemyField.reset();
+        _enemyField.automaticShipsPlacing();
+
+        _gameWon = false;
+        _gameOver = false;
+        _playerFieldBlocked = true;
+        _gameStarted = false;
+        _isMyTurn = false;
+        _turnStatus = "Ожидание начала игры...";
+
+        emit turnStatusChanged();
+        emit gameStatusChanged();
+        emit playerFieldUpdated();
+        emit updateGameButtonState();
+
+        qDebug() << "=== Игра сброшена ===";
+    }
+
+
+    Q_INVOKABLE void gameWon() {
+        _gameWon = true;
+        _gameOver = true;
+        _playerFieldBlocked = true;
+        _turnStatus = "🏆 ПОБЕДА! 🏆";
+        emit turnStatusChanged();
+        emit gameStatusChanged();
+        emit gameWonSignal();
+    }
+
+    void increaseEnemyShipsDestroyed() {
+        _enemyShipsDestroyed++;
+    }
+
+    void setEnemyShipsDestroyed(int amountDestroyedShips) {
+        _enemyShipsDestroyed = amountDestroyedShips;
+    }
+
+
+  signals:
     void gameStatusChanged();
-    void gameWon();
+    void gameWonSignal();
     void gameOver();
-    void gameModeChanged();
-    void connectionStatusChanged();
-    void opponentReady();
-    void turnChanged(bool myTurn);
-    void gameMessage(const QString& message);
+    void turnStatusChanged();
+    void playerFieldUpdated();
+    void updateGameButtonState();
+    void shotRequested(int index);
 
-private slots:
-    void onConnected();
-    void onDisconnected();
-    void onOpponentReady();
-    void onOpponentMove(const QJsonObject& move);
-    void onGameEnded(const QString& winner);
-
-private:
+  private:
     void checkWinCondition();
-    void processOpponentMove(int index);
-    void sendMoveToOpponent(int index, bool hit, bool destroyed);
-    void endGame(const QString& winner);
-    void updateStatus();
+    void updateTurnStatus();
 
-    Model   _model;               // поле игрока (то, что видит противник)
-    Model   _playerModel;         // поле противника (то, что видит игрок)
+    Model   _playerField;
+    Model   _enemyField;
     bool    _gameWon = false;
     bool    _gameOver = false;
-
-    // Сетевые переменные
-    bool _isServer = false;
-    bool _isClient = false;
-    bool _isConnected = false;
-    bool _isMyTurn = false;
-    bool _opponentReady = false;
-    bool _gameStarted = false;
-    QString _playerName = "Игрок";
-
-    Server* _server = nullptr;
-    Client* _client = nullptr;
+    bool    _playerFieldBlocked = true;
+    bool    _gameStarted = false;
+    QString _turnStatus;
+    bool    _isMyTurn = false;
+    int     _enemyShipsDestroyed = 0;
 };
 
 #endif // MODEL_ADAPTER_NETWORK_HPP

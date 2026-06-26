@@ -1,60 +1,76 @@
-#ifndef NETWORK_MANAGER_HPP
-#define NETWORK_MANAGER_HPP
+#ifndef NETWORKMANAGER_H
+#define NETWORKMANAGER_H
 
 #include <QObject>
-#include <QTcpSocket>
-#include <QTcpServer>
+#include <QWebSocket>
+#include <QWebSocketServer>
+#include <QString>
 #include <QJsonObject>
 #include <QJsonDocument>
-#include <memory>
+#include <QAbstractSocket>
+#include <QHash>
+#include <QJsonArray>
+#include <QDateTime>
 
-class NetworkManager : public QObject {
+class NetworkManager : public QObject
+{
     Q_OBJECT
+    Q_PROPERTY(bool isConnected READ isConnected NOTIFY connectionStatusChanged)
+    Q_PROPERTY(bool isServer READ isServer WRITE setIsServer NOTIFY serverModeChanged)
+    Q_PROPERTY(QString connectionStatus READ connectionStatus NOTIFY connectionStatusChanged)
+    Q_PROPERTY(QString localAddress READ localAddress NOTIFY serverModeChanged)
+    Q_PROPERTY(int port READ port NOTIFY serverModeChanged)
 
-public:
-    enum class Role {
-        Server,
-        Client,
-        None
-    };
-
+  public:
     explicit NetworkManager(QObject *parent = nullptr);
-    ~NetworkManager();
 
-    bool startServer(int port = 12345);
-    bool connectToServer(const QString& address, int port = 12345);
-    void disconnect();
+    bool isConnected() const { return _isConnected; }
+    bool isServer() const { return _isServer; }
+    void setIsServer(bool isServer);
+    QString connectionStatus() const { return _connectionStatus; }
+    QString localAddress() const;
+    int port() const { return _port; }
 
-    void sendMessage(const QJsonObject& message);
-    bool isConnected() const;
-    Role getRole() const { return _role; }
+  public slots:
+    void startServer(int port = 8080);
+    void connectToHost(const QString &address, int port = 8080);
+    void disconnectFromHost();
+    void sendMessage(const QString &sender, const QString &text);
+    void setUserName(const QString &name);
 
-signals:
-    void connected();
-    void disconnected();
-    void errorOccurred(const QString& error);
-    void messageReceived(const QJsonObject& message);
-    void playerReady(const QString& playerName);
-    void gameStarted();
-    void enemyMove(const QJsonObject& move);
-    void gameEnded(const QString& winner);
+  signals:
+    void connectionStatusChanged();
+    void serverModeChanged();
+    void messageReceived(const QString &sender, const QString &text);
+    void userConnected(const QString &userName);
+    void userDisconnected(const QString &userName);
+    void errorOccurred(const QString &error);
 
-private slots:
-    void onReadyRead();
+  private slots:
+    void onNewConnection();
     void onConnected();
     void onDisconnected();
-    void onNewConnection();
+    void onTextMessageReceived(const QString &message);
+    void onSocketError(QAbstractSocket::SocketError error);
+    void onServerError(); // Изменено: без параметров
 
-private:
-    void sendJsonMessage(const QJsonObject& message);
-    void processData();
+  private:
+    void setConnectionStatus(const QString &status, bool connected);
+    void broadcastUserList();
+    void sendSystemMessage(const QString &message);
+    void processJsonMessage(const QJsonObject &json, QWebSocket *sender);
+    void sendToAll(const QJsonObject &json, QWebSocket *exclude = nullptr);
+    void sendToClient(QWebSocket *client, const QJsonObject &json);
 
-    Role _role = Role::None;
-    std::unique_ptr<QTcpServer> _server;
-    std::unique_ptr<QTcpSocket> _socket;
-    QByteArray _buffer;
-    bool _isConnected = false;
-    QString _playerName;
+    QWebSocketServer                *_server = nullptr;
+    QWebSocket                      *_clientSocket = nullptr;
+    QList<QWebSocket *>             _clients;
+    QString                         _userName;
+    QString                         _connectionStatus;
+    bool                            _isConnected = false;
+    bool                            _isServer = false;
+    int                             _port = 8080;
+    QHash<QWebSocket *, QString>    _clientNames;
 };
 
-#endif // NETWORK_MANAGER_HPP
+#endif // NETWORKMANAGER_H
