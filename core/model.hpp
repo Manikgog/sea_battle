@@ -14,7 +14,7 @@ enum Side {
 
 class Model {
 
-public:
+  public:
     Model();
     bool isAllShipsIsDestroyed() const;
     bool automaticShipsPlacing();
@@ -29,7 +29,6 @@ public:
     bool placingUp(int row, int column, int cells);
     bool placingDown(int row, int column, int cells);
     const std::vector<Ship>& getShips() const;
-    int getShipsAmount() const;
     int getDestroyedShipsAmount() const;
     int getRows() {
         return _rows;
@@ -38,7 +37,7 @@ public:
         return _columns;
     }
 
-private:
+  private:
 
     void markNotAllowedPlacingPoint(int column, int row, Side side, int cells);
     void addShip(int row, int column, Side side, int cells);

@@ -7,7 +7,7 @@
 
 class Bot {
 
-public:
+  public:
 
     Bot();
 
@@ -25,7 +25,7 @@ public:
 
     Model _model;               // класс с картой кораблей игрока, то есть по которому будет стрелять компьютер (бот)
 
-private:
+  private:
     /**
      * @brief isAllIndexesTrue проверка на случай если все клетки уже обстреляны
      * @return

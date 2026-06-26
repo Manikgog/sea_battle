@@ -12,7 +12,7 @@ struct Point {
 
     explicit Point(int x, const QString& y)
         : _x(x)
-        , _y(y) {}
+          , _y(y) {}
 
 
     QString _y = y_arr[0];

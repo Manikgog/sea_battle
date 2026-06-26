@@ -1,4 +1,3 @@
-
 #include <QDebug>
 #include <iostream>
 #include "model.hpp"
@@ -46,24 +45,24 @@ bool Model::automaticShipsPlacing() {
             if(automaticPlacingShip(cells)) {
                 ship_number++;
 
-                // int count_cells = 0;
-                // for(int i = 0; i < _playingField.size(); ++i) {
-                //     if(i%10 == 0) {
-                //         std::cout << std::endl;
-                //     }
-                //     if(_playingField[i]._isOccupied) {
-                //         count_cells++;
-                //         std::cout << "+ ";
-                //     } else if(_playingField[i]._isAllowed == false) {
-                //         std::cout << "* ";
-                //     }
-                //     else{
-                //         std::cout << "- ";
-                //     }
+                       // int count_cells = 0;
+                       // for(int i = 0; i < _playingField.size(); ++i) {
+                       //     if(i%10 == 0) {
+                       //         std::cout << std::endl;
+                       //     }
+                       //     if(_playingField[i]._isOccupied) {
+                       //         count_cells++;
+                       //         std::cout << "+ ";
+                       //     } else if(_playingField[i]._isAllowed == false) {
+                       //         std::cout << "* ";
+                       //     }
+                       //     else{
+                       //         std::cout << "- ";
+                       //     }
 
-                // }
-                // std::cout << std::endl;
-                // std::cout << std::endl;
+                       // }
+                       // std::cout << std::endl;
+                       // std::cout << std::endl;
             }
         }
         amount_ships++;
@@ -251,25 +250,14 @@ const std::vector<Ship>& Model::getShips() const {
 }
 
 
-int Model::getShipsAmount() const {
-    int ships_counter = 0;
+int Model::getDestroyedShipsAmount() const {
+    int destroyed_ships_counter = 0;
     for(const Ship& ship : _ships) {
-        std::vector<Cell*> cells = ship.getCells();
-        for(const Cell* cell : cells) {
-            if(!cell->_isShoted) {
-                ships_counter++;
-                break;
-            }
+        if(ship.isDestroyed()) {
+            destroyed_ships_counter++;
         }
     }
-    return ships_counter;
-}
-
-
-
-int Model::getDestroyedShipsAmount() const
-{
-    return _ships.size() - getShipsAmount();
+    return destroyed_ships_counter;
 }
 
 
@@ -568,7 +556,7 @@ Point Model::getPoint(int number) {
     int col = index % _columns;      // строка 0-9
     int row = index / _rows;      // колонка 0-9
 
-    // Проверяем границы массива x_arr
+           // Проверяем границы массива x_arr
     if (row >= 0 && row < y_arr.size()) {
         p._y = y_arr[row];
     } else {
@@ -578,11 +566,11 @@ Point Model::getPoint(int number) {
 
     p._x = col + 1;  // колонка от 1 до 10
 
-    // qDebug() << "Number:" << number
-    //          << "-> Index:" << index
-    //          << "-> Row:" << row
-    //          << "-> Col:" << col
-    //          << "-> Point:" << p._y << p._x;
+           // qDebug() << "Number:" << number
+           //          << "-> Index:" << index
+           //          << "-> Row:" << row
+           //          << "-> Col:" << col
+           //          << "-> Point:" << p._y << p._x;
 
     return p;
 }
