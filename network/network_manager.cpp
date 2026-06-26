@@ -3,6 +3,9 @@
 #include <QHostInfo>
 #include <QNetworkInterface>
 
+
+
+
 NetworkManager::NetworkManager(QObject *parent)
     : QObject(parent)
       , _userName("Абонент") {
@@ -42,7 +45,38 @@ QString NetworkManager::localAddress() const {
 
 
 
+bool NetworkManager::isValidPort(int port)
+{
+   return port > 0 && port <= 65535;
+}
+
+bool NetworkManager::isValidAddress(const QString &address)
+{
+    if (address.isEmpty()) {
+        return false;
+    }
+    QString trimmed = address.trimmed();
+    static QRegularExpression ipv4Regex(
+        "^((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\.){3}"
+        "(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$"
+        );
+
+    return ipv4Regex.match(trimmed).hasMatch();
+}
+
+
+
+
+
 void NetworkManager::startServer(int port) {
+    qDebug() << __FUNCTION__ << "111111111111";
+    if (!isValidPort(port)) {
+        QString errorMsg = "Неверный порт: " + QString::number(port) + ". Порт должен быть в диапазоне 1-65535.";
+        setConnectionStatus("Ошибка: " + errorMsg, false);
+        emit errorOccurred(errorMsg);
+        qDebug() << errorMsg;
+        return;
+    }
     if (_isConnected) {
         disconnectFromHost();
     }
@@ -52,24 +86,32 @@ void NetworkManager::startServer(int port) {
         _server = nullptr;
     }
 
+    qDebug() << __FUNCTION__ << "22222222222";
+    if (_server) {
+        delete _server;
+        _server = nullptr;
+    }
+    qDebug() << __FUNCTION__ << "3333333333333";
     _port = port;
     _server = new QWebSocketServer("Messenger Server",
                                    QWebSocketServer::NonSecureMode,
                                    this);
-
+    qDebug() << __FUNCTION__ << "4444444444444";
     connect(_server, &QWebSocketServer::newConnection,
             this, &NetworkManager::onNewConnection);
     connect(_server, &QWebSocketServer::serverError,
             this, &NetworkManager::onServerError);
-
+    qDebug() << __FUNCTION__ << "555555555555555";
     if (_server->listen(QHostAddress::Any, port)) {
         setConnectionStatus("Сервер запущен на порту " + QString::number(port), true);
         qDebug() << "Server started on port" << port;
         qDebug() << "Local address:" << localAddress();
         emit serverModeChanged();
+        qDebug() << __FUNCTION__ << "666666666666666";
     } else {
         setConnectionStatus("Ошибка запуска сервера", false);
         emit errorOccurred("Не удалось запустить сервер на порту " + QString::number(port));
+        qDebug() << __FUNCTION__ << "77777777777777777";
     }
 }
 
@@ -78,18 +120,36 @@ void NetworkManager::startServer(int port) {
 
 
 void NetworkManager::connectToHost(const QString &address, int port) {
+    qDebug() << __FUNCTION__ << "111111111111" << "isConnected =>" << _isConnected;
+    if (!isValidAddress(address)) {
+        QString errorMsg = "Неверный IP-адрес: " + address + ". Ожидается формат xxx.xxx.xxx.xxx";
+        setConnectionStatus("Ошибка: " + errorMsg, false);
+        emit errorOccurred(errorMsg);
+        qDebug() << errorMsg;
+        return;
+    }
+
+           // Проверка валидности порта
+    if (!isValidPort(port)) {
+        QString errorMsg = "Неверный порт: " + QString::number(port) + ". Порт должен быть в диапазоне 1-65535.";
+        setConnectionStatus("Ошибка: " + errorMsg, false);
+        emit errorOccurred(errorMsg);
+        qDebug() << errorMsg;
+        return;
+    }
+
     if (_isConnected) {
         disconnectFromHost();
     }
-
+    qDebug() << __FUNCTION__ << "2222222222222" << _clientSocket;
     if (_clientSocket) {
         delete _clientSocket;
         _clientSocket = nullptr;
     }
-
+    qDebug() << __FUNCTION__ << "33333333333333" << _clientSocket;
     _port = port;
     _clientSocket = new QWebSocket(QString(), QWebSocketProtocol::VersionLatest, this);
-
+    qDebug() << __FUNCTION__ << "444444444444";
     connect(_clientSocket, &QWebSocket::connected,
             this, &NetworkManager::onConnected);
     connect(_clientSocket, &QWebSocket::disconnected,
@@ -98,7 +158,7 @@ void NetworkManager::connectToHost(const QString &address, int port) {
             this, &NetworkManager::onTextMessageReceived);
     connect(_clientSocket, &QWebSocket::errorOccurred,
             this, &NetworkManager::onSocketError);
-
+    qDebug() << __FUNCTION__ << "555555555555555";
     setConnectionStatus("Подключение к " + address + ":" + QString::number(port) + "...", false);
     _clientSocket->open(QUrl("ws://" + address + ":" + QString::number(port)));
 }
@@ -113,20 +173,18 @@ void NetworkManager::disconnectFromHost() {
         _server->deleteLater();
         _server = nullptr;
     }
-
     if (_clientSocket) {
+        disconnect(_clientSocket, nullptr, this, nullptr);
         _clientSocket->close();
         _clientSocket->deleteLater();
         _clientSocket = nullptr;
     }
-
     for (QWebSocket *client : _clients) {
         client->close();
         client->deleteLater();
     }
     _clients.clear();
     _clientNames.clear();
-
     setConnectionStatus("Отключен", false);
 }
 

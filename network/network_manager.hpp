@@ -30,6 +30,8 @@ class NetworkManager : public QObject
     QString connectionStatus() const { return _connectionStatus; }
     QString localAddress() const;
     int port() const { return _port; }
+    Q_INVOKABLE bool isValidPort(int port);
+    Q_INVOKABLE bool isValidAddress(const QString& address);
 
   public slots:
     void startServer(int port = 8080);

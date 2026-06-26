@@ -227,6 +227,7 @@ Item {
                     }
 
                     Text {
+                        id: connectionStatus
                         text: backend.isConnected ? "Подключен" : "Отключен"
                         color: "white"
                         font.pixelSize: 12
@@ -378,16 +379,31 @@ Item {
                                 shipPlacementButton.enabled = true
                             } else {
                                 var port = parseInt(portField.text) || 8080
+
+                                if(!backend.networkManager.isValidPort(port)) {
+                                    connectionStatus.text = "Недопустимый порт"
+                                    return
+                                }
+
                                 if (modeCombo.currentIndex === 0) {
+                                    // Режим клиента
+                                    console.log("onClicked client 111111111111")
                                     var address = addressField.text.trim()
+                                    if(!backend.networkManager.isValidAddress(address)) {
+                                        connectionStatus.text = "Недопустимый адрес"
+                                        return
+                                    }
                                     if (address.length === 0) {
                                         address = "127.0.0.1"
                                     }
+                                    console.log("onClicked client 222222222222")
                                     backend.networkManager.connectToHost(address, port)
                                 } else {
+                                    // Режим сервера
                                     backend.networkManager.startServer(port)
                                 }
                                 root.resetGameState()
+                                connectionStatus.text = "Подключён"
                             }
                         }
                     }
