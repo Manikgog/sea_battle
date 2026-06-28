@@ -99,7 +99,6 @@ class ModelAdapterNetwork : public QObject {
         emit gameStatusChanged();
         emit playerFieldUpdated();
         emit updateGameButtonState();
-        emit endGameState();
 
         qDebug() << "=== Игра сброшена ===";
     }
@@ -111,24 +110,36 @@ class ModelAdapterNetwork : public QObject {
         _playerFieldBlocked = true;
         _gameStarted = false;
         _turnStatus = "🏆 ПОБЕДА! 🏆";
+
+        _enemyField.reset();
+        _enemyField.automaticShipsPlacing();
+        _playerField.reset();
+        _playerField.automaticShipsPlacing();
+        _enemyShipsDestroyed = 0;
+
+        emit gameWonSignal();
         emit turnStatusChanged();
         emit gameStatusChanged();
-        emit gameWonSignal();
         emit updateGameButtonState();
-        emit endGameState();
     }
 
-    Q_INVOKABLE void gameOver_() {
+    Q_INVOKABLE void gameOver() {
         _gameWon = false;
         _gameOver = true;
         _playerFieldBlocked = true;
         _gameStarted = false;
-        _turnStatus = "🏆 ВЫ ПРОИГРАЛИ! 🏆";
+        _turnStatus = "💀 ВЫ ПРОИГРАЛИ! 💀";
+
+        _enemyField.reset();
+        _enemyField.automaticShipsPlacing();
+        _playerField.reset();
+        _playerField.automaticShipsPlacing();
+        _enemyShipsDestroyed = 0;
+
+        emit gameOverSignal();
         emit turnStatusChanged();
         emit gameStatusChanged();
-        emit gameWonSignal();
         emit updateGameButtonState();
-        emit endGameState();
     }
 
     void increaseEnemyShipsDestroyed() {
@@ -139,16 +150,19 @@ class ModelAdapterNetwork : public QObject {
         _enemyShipsDestroyed = amountDestroyedShips;
     }
 
+    bool isGameStarted() {
+        return _gameStarted;
+    }
+
 
   signals:
     void gameStatusChanged();
     void gameWonSignal();
-    void gameOver();
+    void gameOverSignal();
     void turnStatusChanged();
     void playerFieldUpdated();
     void updateGameButtonState();
     void shotRequested(int index);
-    void endGameState();
 
   private:
     void checkWinCondition();

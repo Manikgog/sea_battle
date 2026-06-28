@@ -273,6 +273,8 @@ void ModelAdapterNetwork::newGame() {
 
 void ModelAdapterNetwork::startGame() {
     _gameStarted = true;
+    _gameWon = false;
+    _gameOver = false;
     _isMyTurn = true;
     _playerFieldBlocked = false;
     _turnStatus = "Ваш ход!";

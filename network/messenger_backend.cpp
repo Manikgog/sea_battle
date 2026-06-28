@@ -199,8 +199,6 @@ void MessengerBackend::receiveMessage(const QString &sender, const QString &text
                 if(_gameModel->isGameOver()) {
                     sendMessage("game_over");
                     _gameModel->gameOver();
-                    _gameModel->endGameState();
-                    updateGameButtonState();
                 }
             }
         }
@@ -249,7 +247,7 @@ void MessengerBackend::receiveMessage(const QString &sender, const QString &text
     } else if(text == "game_over") {
         _gameModel->gameWon();
         _gameModel->setEnemyShipsDestroyed(0);
-
+        _gameModel->setGameStarted(false);
         return;
     }
 

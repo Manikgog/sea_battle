@@ -19,6 +19,7 @@ Item {
         updateGameButtonState()
     }
     property bool gameStarted: false
+
     property bool playerReady: false
     onPlayerReadyChanged: {
         console.log("playerReady изменился на:", playerReady)
@@ -117,6 +118,7 @@ Item {
                                    ", enabled=" + (isConnected && !playerReady && !gameStarted))
         }
     }
+
 
     // Функция сброса состояния игры
     function resetGameState() {
@@ -393,7 +395,6 @@ Item {
 
                                 if (modeCombo.currentIndex === 0) {
                                     // Режим клиента
-                                    console.log("onClicked client 111111111111")
                                     var address = addressField.text.trim()
                                     if(!backend.networkManager.isValidAddress(address)) {
                                         connectionStatus.text = "Недопустимый адрес"
@@ -402,7 +403,6 @@ Item {
                                     if (address.length === 0) {
                                         address = "127.0.0.1"
                                     }
-                                    console.log("onClicked client 222222222222")
                                     backend.networkManager.connectToHost(address, port)
                                 } else {
                                     // Режим сервера
@@ -786,7 +786,6 @@ Item {
                                         turnIndicatorText.text = root.model.getTurnStatus()
                                         shipPlacementButton.enabled = false
                                         root.updateGameButtonState()
-                                        clearAllCells()
                                     }
                                 }
                             }
@@ -997,6 +996,7 @@ Item {
                     turnIndicatorText.text = root.model.getTurnStatus()
                     backend.receiveMessage("Система", "Игра началась! Ход противника.")
                     root.updateGameButtonState()
+                    clearAllCells()
                     console.log("Клиент: gameStarted=" + root.gameStarted +
                                        ", isMyTurn=" + root.model.isMyTurn())
                 }
@@ -1004,6 +1004,7 @@ Item {
                 if (root.model) {
                     root.gameStarted = false
                     root.playerReady = false
+                    root.clientReady = false
                     root.model.setMyTurn(false)
                     root.model.setPlayerFieldBlocked(true)
                     root.model.updateGameStatus()
@@ -1013,7 +1014,6 @@ Item {
                     turnIndicatorText.text = root.model.getTurnStatus()
                     backend.receiveMessage("Система", "Вы выиграли!")
                     root.updateGameButtonState()
-                    gameButton.enabled = true
                 }
             }
         }
@@ -1032,24 +1032,34 @@ Item {
             root.updateAllCells();
         }
 
-        function onGameWon() {
+        function onGameWonSignal() {
+            gameStarted = false
+            playerReady = false
+            console.log("Получен сигнал onGameWonSignal gameStarted ==>", gameStarted)
             enemyStatusText.text = "🏆 ПОБЕДА! 🏆\nВсе корабли противника уничтожены!"
             enemyStatusText.color = "#e74c3c"
-            gameMessageDialog.title = "Победа!"
-            gameMessageDialog.text = "🎉 ПОЗДРАВЛЯЕМ! 🎉\nВы уничтожили все корабли противника!"
-            gameMessageDialog.open()
             turnIndicatorText.text = root.model.getTurnStatus()
             root.updateAllCells()
+            shipPlacementButton.enabled = true
+            root.updateGameButtonState()
+            // gameMessageDialog.title = "Победа!"
+            // gameMessageDialog.text = "🎉 ПОЗДРАВЛЯЕМ! 🎉\nВы уничтожили все корабли противника!"
+            // gameMessageDialog.open()
         }
 
-        function onGameOver() {
+        function onGameOverSignal() {
+            gameStarted = false
+            playerReady = false
+            console.log("Получен сигнал onGameOverSignal gameStarted ==>", gameStarted)
             playerStatusText.text = "ВЫ ПРОИГРАЛИ! 💀\nВсе ваши корабли уничтожены!"
             playerStatusText.color = "black"
-            gameMessageDialog.title = "Игра окончена"
-            gameMessageDialog.text = "😢 Вы проиграли!\nВсе ваши корабли уничтожены."
-            gameMessageDialog.open()
             turnIndicatorText.text = root.model.getTurnStatus()
             root.updateAllCells()
+            shipPlacementButton.enabled = true
+            root.updateGameButtonState()
+            // gameMessageDialog.title = "Игра окончена"
+            // gameMessageDialog.text = "😢 Вы проиграли!\nВсе ваши корабли уничтожены."
+            // gameMessageDialog.open()
         }
 
         function onGameStatusChanged() {
@@ -1087,10 +1097,6 @@ Item {
         function onUpdateGameButtonState() {
             console.log("Получен сигнал updateGameButtonState от модели")
             root.updateGameButtonState()
-        }
-
-        function onEndGameState() {
-            shipPlacementButton.enabled = true
         }
     }
 
