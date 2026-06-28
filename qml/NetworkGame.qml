@@ -1094,6 +1094,8 @@ Item {
         }
     }
 
+
+
     Component.onCompleted: {
         if (root.model) {
             enemyStatusText.text = root.model.getEnemyGameStatus();

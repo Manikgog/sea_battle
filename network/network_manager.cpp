@@ -3,17 +3,11 @@
 #include <QHostInfo>
 #include <QNetworkInterface>
 
-
-
-
 NetworkManager::NetworkManager(QObject *parent)
     : QObject(parent)
-      , _userName("Абонент") {
+    , _userName("Абонент") {
     setConnectionStatus("Отключен", false);
 }
-
-
-
 
 void NetworkManager::setIsServer(bool isServer) {
     if (_isServer != isServer) {
@@ -24,10 +18,6 @@ void NetworkManager::setIsServer(bool isServer) {
         emit serverModeChanged();
     }
 }
-
-
-
-
 
 QString NetworkManager::localAddress() const {
     QList<QHostAddress> addresses = QNetworkInterface::allAddresses();
@@ -41,17 +31,11 @@ QString NetworkManager::localAddress() const {
     return "127.0.0.1";
 }
 
-
-
-
-
-bool NetworkManager::isValidPort(int port)
-{
-   return port > 0 && port <= 65535;
+bool NetworkManager::isValidPort(int port) {
+    return port > 0 && port <= 65535;
 }
 
-bool NetworkManager::isValidAddress(const QString &address)
-{
+bool NetworkManager::isValidAddress(const QString &address) {
     if (address.isEmpty()) {
         return false;
     }
@@ -60,16 +44,10 @@ bool NetworkManager::isValidAddress(const QString &address)
         "^((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\.){3}"
         "(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$"
         );
-
     return ipv4Regex.match(trimmed).hasMatch();
 }
 
-
-
-
-
 void NetworkManager::startServer(int port) {
-    qDebug() << __FUNCTION__ << "111111111111";
     if (!isValidPort(port)) {
         QString errorMsg = "Неверный порт: " + QString::number(port) + ". Порт должен быть в диапазоне 1-65535.";
         setConnectionStatus("Ошибка: " + errorMsg, false);
@@ -77,50 +55,42 @@ void NetworkManager::startServer(int port) {
         qDebug() << errorMsg;
         return;
     }
+
     if (_isConnected) {
         disconnectFromHost();
     }
 
+    // Очищаем предыдущий сервер
     if (_server) {
+        _server->close();
         delete _server;
         _server = nullptr;
     }
 
-    qDebug() << __FUNCTION__ << "22222222222";
-    if (_server) {
-        delete _server;
-        _server = nullptr;
-    }
-    qDebug() << __FUNCTION__ << "3333333333333";
     _port = port;
     _server = new QWebSocketServer("Messenger Server",
                                    QWebSocketServer::NonSecureMode,
                                    this);
-    qDebug() << __FUNCTION__ << "4444444444444";
+
     connect(_server, &QWebSocketServer::newConnection,
             this, &NetworkManager::onNewConnection);
     connect(_server, &QWebSocketServer::serverError,
             this, &NetworkManager::onServerError);
-    qDebug() << __FUNCTION__ << "555555555555555";
+
     if (_server->listen(QHostAddress::Any, port)) {
         setConnectionStatus("Сервер запущен на порту " + QString::number(port), true);
         qDebug() << "Server started on port" << port;
-        qDebug() << "Local address:" << localAddress();
         emit serverModeChanged();
-        qDebug() << __FUNCTION__ << "666666666666666";
     } else {
         setConnectionStatus("Ошибка запуска сервера", false);
         emit errorOccurred("Не удалось запустить сервер на порту " + QString::number(port));
-        qDebug() << __FUNCTION__ << "77777777777777777";
+        qDebug() << "Failed to start server on port" << port;
     }
 }
 
-
-
-
-
 void NetworkManager::connectToHost(const QString &address, int port) {
-    qDebug() << __FUNCTION__ << "111111111111" << "isConnected =>" << _isConnected;
+    qDebug() << __FUNCTION__ << "Connecting to" << address << ":" << port;
+
     if (!isValidAddress(address)) {
         QString errorMsg = "Неверный IP-адрес: " + address + ". Ожидается формат xxx.xxx.xxx.xxx";
         setConnectionStatus("Ошибка: " + errorMsg, false);
@@ -129,7 +99,6 @@ void NetworkManager::connectToHost(const QString &address, int port) {
         return;
     }
 
-           // Проверка валидности порта
     if (!isValidPort(port)) {
         QString errorMsg = "Неверный порт: " + QString::number(port) + ". Порт должен быть в диапазоне 1-65535.";
         setConnectionStatus("Ошибка: " + errorMsg, false);
@@ -138,18 +107,23 @@ void NetworkManager::connectToHost(const QString &address, int port) {
         return;
     }
 
+    // Отключаемся от текущего соединения если оно есть
     if (_isConnected) {
         disconnectFromHost();
     }
-    qDebug() << __FUNCTION__ << "2222222222222" << _clientSocket;
+
+    // Безопасно удаляем старый сокет
     if (_clientSocket) {
-        delete _clientSocket;
+        // Отключаем все сигналы от старого сокета
+        disconnect(_clientSocket, nullptr, this, nullptr);
+        _clientSocket->close();
+        _clientSocket->deleteLater();
         _clientSocket = nullptr;
     }
-    qDebug() << __FUNCTION__ << "33333333333333" << _clientSocket;
+
     _port = port;
     _clientSocket = new QWebSocket(QString(), QWebSocketProtocol::VersionLatest, this);
-    qDebug() << __FUNCTION__ << "444444444444";
+
     connect(_clientSocket, &QWebSocket::connected,
             this, &NetworkManager::onConnected);
     connect(_clientSocket, &QWebSocket::disconnected,
@@ -158,39 +132,37 @@ void NetworkManager::connectToHost(const QString &address, int port) {
             this, &NetworkManager::onTextMessageReceived);
     connect(_clientSocket, &QWebSocket::errorOccurred,
             this, &NetworkManager::onSocketError);
-    qDebug() << __FUNCTION__ << "555555555555555";
+
     setConnectionStatus("Подключение к " + address + ":" + QString::number(port) + "...", false);
     _clientSocket->open(QUrl("ws://" + address + ":" + QString::number(port)));
 }
 
-
-
-
-
 void NetworkManager::disconnectFromHost() {
+    // Останавливаем сервер если он запущен
     if (_server) {
         _server->close();
-        _server->deleteLater();
+        delete _server;
         _server = nullptr;
     }
+
+    // Отключаем и удаляем клиентский сокет
     if (_clientSocket) {
         disconnect(_clientSocket, nullptr, this, nullptr);
         _clientSocket->close();
         _clientSocket->deleteLater();
         _clientSocket = nullptr;
     }
+
+    // Закрываем все клиентские соединения
     for (QWebSocket *client : _clients) {
         client->close();
         client->deleteLater();
     }
     _clients.clear();
     _clientNames.clear();
+
     setConnectionStatus("Отключен", false);
 }
-
-
-
-
 
 void NetworkManager::sendMessage(const QString &sender, const QString &text) {
     QJsonObject json;
@@ -206,15 +178,10 @@ void NetworkManager::sendMessage(const QString &sender, const QString &text) {
     }
 }
 
-
-
-
-
 void NetworkManager::setUserName(const QString &name) {
     if (_userName != name) {
         _userName = name;
         if (_isConnected) {
-            // Отправляем обновление имени всем
             QJsonObject json;
             json["type"] = "user_update";
             json["userName"] = name;
@@ -226,10 +193,6 @@ void NetworkManager::setUserName(const QString &name) {
         }
     }
 }
-
-
-
-
 
 void NetworkManager::onNewConnection() {
     QWebSocket *client = _server->nextPendingConnection();
@@ -248,21 +211,14 @@ void NetworkManager::onNewConnection() {
     _clientNames[client] = "Гость";
 
     qDebug() << "New client connected. Total clients:" << _clients.size();
-
-           // Отправляем приветственное сообщение
     sendSystemMessage("Пользователь подключился к чату");
     broadcastUserList();
 }
-
-
-
-
 
 void NetworkManager::onConnected() {
     if (_clientSocket) {
         setConnectionStatus("Подключен к серверу", true);
 
-               // Отправляем информацию о пользователе
         QJsonObject json;
         json["type"] = "join";
         json["userName"] = _userName;
@@ -271,10 +227,6 @@ void NetworkManager::onConnected() {
         qDebug() << "Connected to server as" << _userName;
     }
 }
-
-
-
-
 
 void NetworkManager::onDisconnected() {
     QWebSocket *socket = qobject_cast<QWebSocket *>(sender());
@@ -291,15 +243,9 @@ void NetworkManager::onDisconnected() {
         }
     } else if (_clientSocket) {
         setConnectionStatus("Отключен от сервера", false);
-        _clientSocket->deleteLater();
-        _clientSocket = nullptr;
+        // Не удаляем _clientSocket здесь, это сделает onSocketError или disconnectFromHost
     }
 }
-
-
-
-
-
 
 void NetworkManager::onTextMessageReceived(const QString &message) {
     QWebSocket *socket = qobject_cast<QWebSocket *>(sender());
@@ -313,10 +259,6 @@ void NetworkManager::onTextMessageReceived(const QString &message) {
     QJsonObject json = doc.object();
     processJsonMessage(json, socket);
 }
-
-
-
-
 
 void NetworkManager::onSocketError(QAbstractSocket::SocketError error) {
     QString errorMsg;
@@ -341,11 +283,24 @@ void NetworkManager::onSocketError(QAbstractSocket::SocketError error) {
     setConnectionStatus("Ошибка: " + errorMsg, false);
     emit errorOccurred(errorMsg);
     qDebug() << "Socket error:" << errorMsg;
+
+    // Безопасно очищаем сокет при ошибке
+    QWebSocket *socket = qobject_cast<QWebSocket *>(sender());
+    if (socket) {
+        // Если это клиентский сокет
+        if (socket == _clientSocket) {
+            disconnect(_clientSocket, nullptr, this, nullptr);
+            _clientSocket->close();
+            _clientSocket->deleteLater();
+            _clientSocket = nullptr;
+        } else {
+            // Если это клиент на сервере
+            _clients.removeAll(socket);
+            _clientNames.remove(socket);
+            socket->deleteLater();
+        }
+    }
 }
-
-
-
-
 
 void NetworkManager::onServerError() {
     if (_server) {
@@ -353,12 +308,13 @@ void NetworkManager::onServerError() {
         setConnectionStatus(errorMsg, false);
         emit errorOccurred(errorMsg);
         qDebug() << "Server error:" << errorMsg;
+
+        // Безопасно очищаем сервер при ошибке
+        _server->close();
+        delete _server;
+        _server = nullptr;
     }
 }
-
-
-
-
 
 void NetworkManager::setConnectionStatus(const QString &status, bool connected) {
     if (_connectionStatus != status || _isConnected != connected) {
@@ -367,11 +323,6 @@ void NetworkManager::setConnectionStatus(const QString &status, bool connected) 
         emit connectionStatusChanged();
     }
 }
-
-
-
-
-
 
 void NetworkManager::broadcastUserList() {
     QStringList userList;
@@ -388,10 +339,6 @@ void NetworkManager::broadcastUserList() {
     sendToAll(json);
 }
 
-
-
-
-
 void NetworkManager::sendSystemMessage(const QString &message) {
     QJsonObject json;
     json["type"] = "system";
@@ -400,10 +347,6 @@ void NetworkManager::sendSystemMessage(const QString &message) {
 
     sendToAll(json);
 }
-
-
-
-
 
 void NetworkManager::processJsonMessage(const QJsonObject &json, QWebSocket *sender) {
     QString type = json["type"].toString();
@@ -427,7 +370,6 @@ void NetworkManager::processJsonMessage(const QJsonObject &json, QWebSocket *sen
         if (!senderName.isEmpty() && !text.isEmpty()) {
             emit messageReceived(senderName, text);
 
-                   // Если мы сервер, пересылаем сообщение всем клиентам
             if (_isServer) {
                 sendToAll(json, sender);
             }
@@ -443,10 +385,6 @@ void NetworkManager::processJsonMessage(const QJsonObject &json, QWebSocket *sen
     }
 }
 
-
-
-
-
 void NetworkManager::sendToAll(const QJsonObject &json, QWebSocket *exclude) {
     QJsonDocument doc(json);
     QByteArray data = doc.toJson();
@@ -457,17 +395,15 @@ void NetworkManager::sendToAll(const QJsonObject &json, QWebSocket *exclude) {
         }
     }
 
-           // Если мы клиент, отправляем на сервер
     if (!_isServer && _clientSocket && _clientSocket != exclude) {
         _clientSocket->sendTextMessage(QString::fromUtf8(data));
     }
 }
 
-
-
-
-
 void NetworkManager::sendToClient(QWebSocket *client, const QJsonObject &json) {
+    if (!client) {
+        return;
+    }
     QJsonDocument doc(json);
     client->sendTextMessage(QString::fromUtf8(doc.toJson()));
 }
