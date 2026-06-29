@@ -26,6 +26,11 @@ struct Point {
 
 
 struct Cell {
+    Cell()
+        : _position()
+        , _isShoted(false)
+        , _isOccupied(false)
+        , _isAllowed(true) {}
     Point   _position;
     bool    _isShoted   = false;
     bool    _isOccupied = false;

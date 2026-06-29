@@ -207,21 +207,21 @@ void MessengerBackend::receiveMessage(const QString &sender, const QString &text
     // Обработка результата выстрела
     if (!messageParts.empty() && messageParts[0] == "result" && messageParts.size() == 3) {
         _gameModel->setResult(messageParts[1], messageParts[2]);
-        int res = messageParts[1].toInt();
-        if (res == Result::Miss) {
-            // Промах - ход переходит к противнику
-            _gameModel->setMyTurn(false);
-            _gameModel->setPlayerFieldBlocked(true);
-        } else if(res == Result::Destroyed) {
-            _gameModel->increaseEnemyShipsDestroyed();
-            _gameModel->setMyTurn(true);
-            _gameModel->setPlayerFieldBlocked(false);
-        } else if(res == Result::Wounded) {
-            // Попадание - ход остается у нас
-            _gameModel->setMyTurn(true);
-            _gameModel->setPlayerFieldBlocked(false);
-        }
-        _gameModel->updateGameStatus();
+        // int res = messageParts[1].toInt();
+        // if (res == Result::Miss) {
+        //     // Промах - ход переходит к противнику
+        //     _gameModel->setMyTurn(false);
+        //     _gameModel->setPlayerFieldBlocked(true);
+        // } else if(res == Result::Destroyed) {
+        //     _gameModel->increaseEnemyShipsDestroyed();
+        //     _gameModel->setMyTurn(true);
+        //     _gameModel->setPlayerFieldBlocked(false);
+        // } else if(res == Result::Wounded) {
+        //     // Попадание - ход остается у нас
+        //     _gameModel->setMyTurn(true);
+        //     _gameModel->setPlayerFieldBlocked(false);
+        // }
+        //_gameModel->updateGameStatus();
         return;
     }
 

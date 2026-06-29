@@ -866,6 +866,7 @@ Item {
                         placeholderText: backend.isConnected ? "Введите сообщение..." : "Подключитесь к сети для отправки сообщений"
                         wrapMode: TextArea.Wrap
                         font.pixelSize: 14
+                        color: "black"
                         enabled: backend.isConnected
 
                         Keys.onEnterPressed: {
@@ -1001,9 +1002,9 @@ Item {
             }
         }
 
-        function onUpdateGameButtonState() {
-            root.updateGameButtonState()
-        }
+        // function onUpdateGameButtonState() {
+        //     root.updateGameButtonState()
+        // }
     }
 
     // Обработка сигналов от модели

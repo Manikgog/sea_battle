@@ -13,7 +13,6 @@ ModelAdapterNetwork::ModelAdapterNetwork(QObject *parent)
       , _isMyTurn(false)
 {
     _playerField.automaticShipsPlacing();
-    _enemyField.automaticShipsPlacing();
     updateTurnStatus();
 }
 
@@ -35,12 +34,18 @@ bool ModelAdapterNetwork::getEnemyCellIsOccupied(int index) {
     if (index < 0 || index >= static_cast<int>(_enemyField.getPlayingField().size())) {
         return false;
     }
+    if(_enemyField.getPlayingField()[index]._isOccupied) {
+        qDebug() << __FUNCTION__ << index << _enemyField.getPlayingField()[index]._isOccupied;
+    }
     return _enemyField.getPlayingField()[index]._isOccupied;
 }
 
 bool ModelAdapterNetwork::getEnemyCellIsShoted(int index) {
     if (index < 0 || index >= static_cast<int>(_enemyField.getPlayingField().size())) {
         return false;
+    }
+    if(_enemyField.getPlayingField()[index]._isShoted) {
+        qDebug() << __FUNCTION__ << index << _enemyField.getPlayingField()[index]._isShoted;
     }
     return _enemyField.getPlayingField()[index]._isShoted;
 }
@@ -145,7 +150,7 @@ void ModelAdapterNetwork::setResult(const QString &resultStr, const QString &ind
 
     checkWinCondition();
     emit gameStatusChanged();
-    emit playerFieldUpdated();
+    //emit playerFieldUpdated();
     updateTurnStatus();
 }
 
@@ -402,7 +407,6 @@ Q_INVOKABLE bool ModelAdapterNetwork::isPlayerFieldBlocked() const {
 
 void ModelAdapterNetwork::checkWinCondition() {
     bool playerLost = _playerField.isAllShipsIsDestroyed();
-    bool playerWon = _enemyField.isAllShipsIsDestroyed();
 
     if (playerLost && !_gameOver) {
         _gameOver = true;
@@ -413,16 +417,6 @@ void ModelAdapterNetwork::checkWinCondition() {
         emit gameStatusChanged();
         emit gameOver();
         return;
-    }
-
-    if (playerWon && !_gameWon) {
-        _gameWon = true;
-        _gameOver = true;
-        _playerFieldBlocked = true;
-        _turnStatus = "🏆 ПОБЕДА! 🏆";
-        emit turnStatusChanged();
-        emit gameWonSignal();
-        emit gameStatusChanged();
     }
 }
 

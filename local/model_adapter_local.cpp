@@ -220,7 +220,6 @@ void ModelAdapterLocal::newGame() {
     _playerFieldBlocked = false;
     _turnStatus = "Ваш ход";
     _isPlayerTurn = true;
-    _isGameStarted = true;
     emit turnStatusChanged();
     emit gameStatusChanged();
 }
@@ -288,7 +287,6 @@ void ModelAdapterLocal::checkWinCondition() {
         qDebug() << "BOT WINS! Game Over!";
         _turnStatus = "💀 ВЫ ПРОИГРАЛИ! 💀";
         _isPlayerTurn = false;
-        _isGameStarted = false;
         emit turnStatusChanged();
         emit gameStatusChanged();
         emit gameOver();
@@ -301,7 +299,6 @@ void ModelAdapterLocal::checkWinCondition() {
         _playerFieldBlocked = false;
         _turnStatus = "🏆 ПОБЕДА! 🏆";
         _isPlayerTurn = false;
-        _isGameStarted = false;
         emit turnStatusChanged();
         qDebug() << "PLAYER WINS!";
         emit gameWon();
@@ -321,6 +318,12 @@ void ModelAdapterLocal::updateTurnStatus() {
             _turnStatus = "💀 ВЫ ПРОИГРАЛИ! 💀";
             _isPlayerTurn = false;
             _isGameStarted = false;
+        } else  if (!_isPlayerTurn) {
+            _turnStatus = "Ход бота...";
+            _isPlayerTurn = false;
+        } else if (_isPlayerTurn){
+            _turnStatus = "Ваш ход";
+            _isPlayerTurn = false;
         }
     } else {
         _turnStatus = "Ожидание начала игры ...";
