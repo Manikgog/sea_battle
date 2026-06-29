@@ -82,13 +82,13 @@ void Bot::setHit(int index, bool is_desroyed) {
         int upper_diagonal_left_index = index - 11;
         if(upper_diagonal_left_index >= 0) {
             _shots[upper_diagonal_left_index]._isShoted = true;
-            playerField[upper_diagonal_left_index]._isShoted = true;
+            //playerField[upper_diagonal_left_index]._isShoted = true;
         }
 
         int lower_diagonal_left_index = index + 9;
         if(lower_diagonal_left_index < _shots.size()) {
             _shots[lower_diagonal_left_index]._isShoted = true;
-            playerField[lower_diagonal_left_index]._isShoted = true;
+            //playerField[lower_diagonal_left_index]._isShoted = true;
         }
     }
 
@@ -96,13 +96,13 @@ void Bot::setHit(int index, bool is_desroyed) {
         int upper_diagonal_right_index = index - 9;
         if(upper_diagonal_right_index >= 0) {
             _shots[upper_diagonal_right_index]._isShoted = true;
-            playerField[upper_diagonal_right_index]._isShoted = true;
+            //playerField[upper_diagonal_right_index]._isShoted = true;
         }
 
         int lower_diagonal_right_index = index + 11;
         if(lower_diagonal_right_index < _shots.size()) {
             _shots[lower_diagonal_right_index]._isShoted = true;
-            playerField[lower_diagonal_right_index]._isShoted = true;
+            //playerField[lower_diagonal_right_index]._isShoted = true;
         }
     }
 
@@ -124,7 +124,7 @@ void Bot::setHit(int index, bool is_desroyed) {
                 }
                 if(left_index >= 0 && i%10 != 0) {
                     _shots[left_index]._isShoted = true;
-                    playerField[left_index]._isShoted = true;
+                    //playerField[left_index]._isShoted = true;
                 }
                 int right_index = i + 1;
                 if(right_index > last_index_in_row) {
@@ -132,13 +132,13 @@ void Bot::setHit(int index, bool is_desroyed) {
                 }
                 if(right_index < _shots.size() && i%10 != 9) {
                     _shots[right_index]._isShoted = true;
-                    playerField[right_index]._isShoted = true;
+                    //playerField[right_index]._isShoted = true;
                 }
                 continue;
             }
             if(!_shots[i]._isOccupied) {
                 _shots[i]._isShoted = true;
-                playerField[i]._isShoted = true;
+                //playerField[i]._isShoted = true;
                 break;
             }
         }
@@ -156,7 +156,7 @@ void Bot::setHit(int index, bool is_desroyed) {
                 }
                 if(left_index >= 0 && i%10 != 0) {
                     _shots[left_index]._isShoted = true;
-                    playerField[left_index]._isShoted = true;
+                    //playerField[left_index]._isShoted = true;
                 }
                 int right_index = i + 1;
                 if(right_index > last_index_in_row) {
@@ -164,7 +164,7 @@ void Bot::setHit(int index, bool is_desroyed) {
                 }
                 if(right_index < _shots.size() && i%10 != 9) {
                     _shots[right_index]._isShoted = true;
-                    playerField[right_index]._isShoted = true;
+                    //playerField[right_index]._isShoted = true;
                 }
                 continue;
             }
@@ -186,41 +186,41 @@ void Bot::setHit(int index, bool is_desroyed) {
                 int up_index = i - 10;
                 if(up_index >= 0) {
                     _shots[up_index]._isShoted = true;
-                    playerField[up_index]._isShoted = true;
+                    //playerField[up_index]._isShoted = true;
                 }
                 int low_index = i + 10;
                 if(low_index < _shots.size()) {
                     _shots[low_index]._isShoted = true;
-                    playerField[low_index]._isShoted = true;
+                    //playerField[low_index]._isShoted = true;
                 }
                 continue;
             }
             if(!_shots[i]._isOccupied) {
                 _shots[i]._isShoted = true;
-                playerField[i]._isShoted = true;
+                //playerField[i]._isShoted = true;
                 break;
             }
         }
 
-               // идём вправо и отмечаем верхние и нижние клетки для исключения из дальнейшей стрельбы
+        // идём вправо и отмечаем верхние и нижние клетки для исключения из дальнейшей стрельбы
         int right_index = index + 1;
         for(int i = right_index; i <= last_index_in_row; ++i) {
             if(_shots[i]._isOccupied && _shots[i]._isShoted) {
                 int up_index = i - 10;
                 if(up_index >= 0) {
                     _shots[up_index]._isShoted = true;
-                    playerField[up_index]._isShoted = true;
+                    //playerField[up_index]._isShoted = true;
                 }
                 int low_index = i + 10;
                 if(low_index < _shots.size()) {
                     _shots[low_index]._isShoted = true;
-                    playerField[low_index]._isShoted = true;
+                    //playerField[low_index]._isShoted = true;
                 }
                 continue;
             }
             if(!_shots[i]._isOccupied) {
                 _shots[i]._isShoted = true;
-                playerField[i]._isShoted = true;
+                //playerField[i]._isShoted = true;
                 break;
             }
         }

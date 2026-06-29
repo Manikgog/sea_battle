@@ -21,8 +21,9 @@ struct Point {
     bool operator==(const Point& other) const {
         return other._x == _x && other._y == _y;
     }
-
 };
+
+
 
 struct Cell {
     Point   _position;
@@ -31,11 +32,15 @@ struct Cell {
     bool    _isAllowed = true;
 };
 
+
+
 enum Result {
     Miss        // промах
     , Wounded   // ранен
     , Destroyed // убит
 };
+
+
 
 struct ShotResult {
     Result  _result;

@@ -66,8 +66,6 @@ std::optional<ShotResult> ModelAdapterNetwork::setShot(const QString &indexStr)
         return {ShotResult{Result::Miss, index}};
     }
 
-    qDebug() << __FUNCTION__ << "Противник стреляет в клетку:" << index;
-
     int destroyedShipsBefore = _playerField.getDestroyedShipsAmount();
     cell._isShoted = true;
 
@@ -75,10 +73,9 @@ std::optional<ShotResult> ModelAdapterNetwork::setShot(const QString &indexStr)
     result._index = index;
 
     if (cell._isOccupied) {
-        qDebug() << __FUNCTION__ << "Попадание!";
         result._result = Result::Wounded;
 
-               // Проверяем, уничтожен ли корабль
+        // Проверяем, уничтожен ли корабль
         int destroyedShipsAfter = _playerField.getDestroyedShipsAmount();
         if (destroyedShipsAfter > destroyedShipsBefore) {
             result._result = Result::Destroyed;
@@ -87,7 +84,6 @@ std::optional<ShotResult> ModelAdapterNetwork::setShot(const QString &indexStr)
         _isMyTurn = false;
         _playerFieldBlocked = true;
     } else {
-        qDebug() << __FUNCTION__ << "Промах!";
         result._result = Result::Miss;
         // при промахе противника по моему полю ход переходит ко мне
         _isMyTurn = true;
@@ -101,18 +97,25 @@ std::optional<ShotResult> ModelAdapterNetwork::setShot(const QString &indexStr)
     return result;
 }
 
+
+
+
+
+
+
+
 void ModelAdapterNetwork::setResult(const QString &resultStr, const QString &indexStr)
 {
     bool ok;
     int res = resultStr.toInt(&ok);
     if (!ok) {
-        qDebug() << __FUNCTION__ << "Неверный результат:" << resultStr;
+        qDebug() << __FUNCTION__ << "Результат не является числом:" << resultStr;
         return;
     }
 
     int index = indexStr.toInt(&ok);
     if (!ok) {
-        qDebug() << __FUNCTION__ << "Неверный индекс:" << indexStr;
+        qDebug() << __FUNCTION__ << "Индекс не является числом:" << indexStr;
         return;
     }
 
@@ -128,19 +131,16 @@ void ModelAdapterNetwork::setResult(const QString &resultStr, const QString &ind
         // при нашем промахе по противнику - ход переходит к противнику
         _isMyTurn = false;
         _playerFieldBlocked = true;
-        qDebug() << "Промах по противнику";
     } else if (res == Result::Wounded) {
         // при попадании по противнику - ход остаётся у нас
         _isMyTurn = true;
         _playerFieldBlocked = false;
         cell._isOccupied = true;
-        qDebug() << "Попадание по противнику (ранен)";
     } else if (res == Result::Destroyed) {
         // при уничтожении корабля противника - ход остаётся у нас
         _isMyTurn = true;
         _playerFieldBlocked = false;
         cell._isOccupied = true;
-        qDebug() << "Попадание по противнику (убит)";
     }
 
     checkWinCondition();
@@ -153,7 +153,58 @@ void ModelAdapterNetwork::setResult(const QString &resultStr, const QString &ind
 
 
 
+Q_INVOKABLE void ModelAdapterNetwork::setPlayerFieldBlocked(bool blocked) {
+    _playerFieldBlocked = blocked;
+    updateTurnStatus();
+    emit gameStatusChanged();
+}
 
+
+
+
+
+Q_INVOKABLE void ModelAdapterNetwork::gameWon() {
+    _gameWon = true;
+    _gameOver = true;
+    _playerFieldBlocked = true;
+    _gameStarted = false;
+    _turnStatus = "🏆 ПОБЕДА! 🏆";
+
+    _enemyField.reset();
+    _enemyField.automaticShipsPlacing();
+    _playerField.reset();
+    _playerField.automaticShipsPlacing();
+    _enemyShipsDestroyed = 0;
+
+    emit gameWonSignal();
+    emit turnStatusChanged();
+    emit gameStatusChanged();
+    emit updateGameButtonState();
+}
+
+
+
+
+
+
+Q_INVOKABLE void ModelAdapterNetwork::gameOver() {
+    _gameWon = false;
+    _gameOver = true;
+    _playerFieldBlocked = true;
+    _gameStarted = false;
+    _turnStatus = "💀 ВЫ ПРОИГРАЛИ! 💀";
+
+    _enemyField.reset();
+    _enemyField.automaticShipsPlacing();
+    _playerField.reset();
+    _playerField.automaticShipsPlacing();
+    _enemyShipsDestroyed = 0;
+
+    emit gameOverSignal();
+    emit turnStatusChanged();
+    emit gameStatusChanged();
+    emit updateGameButtonState();
+}
 
 
 
@@ -161,30 +212,19 @@ void ModelAdapterNetwork::setResult(const QString &resultStr, const QString &ind
 
 
 void ModelAdapterNetwork::shot(int index) {
-    qDebug() << "shot() called: index=" << index
-             << "_gameWon=" << _gameWon
-             << "_gameOver=" << _gameOver
-             << "_gameStarted=" << _gameStarted
-             << "_isMyTurn=" << _isMyTurn
-             << "_playerFieldBlocked=" << _playerFieldBlocked;
-
     if (_gameWon || _gameOver) {
-        qDebug() << "Игра уже закончена";
         return;
     }
 
     if (!_gameStarted) {
-        qDebug() << "Игра еще не началась";
         return;
     }
 
     if (!_isMyTurn) {
-        qDebug() << "Сейчас не ваш ход!";
         return;
     }
 
     if (_playerFieldBlocked) {
-        qDebug() << "Поле заблокировано";
         return;
     }
 
@@ -196,19 +236,16 @@ void ModelAdapterNetwork::shot(int index) {
     Cell& cell = field[index];
 
     if (cell._isShoted) {
-        qDebug() << "Клетка уже обстреляна:" << index;
         return;
     }
 
-    qDebug() << "Игрок стреляет в клетку:" << index;
-
-           // Блокируем поле до получения результата
+    // Блокируем поле до получения результата
     _playerFieldBlocked = true;
     _isMyTurn = false;
     emit gameStatusChanged();
     updateTurnStatus();
 
-           // Отправляем выстрел через бэкенд
+    // Отправляем выстрел через бэкенд
     emit shotRequested(index);
 }
 
@@ -222,8 +259,6 @@ void ModelAdapterNetwork::shot(int index) {
 
 
 void ModelAdapterNetwork::shipPlacing() {
-    qDebug() << "=== Перерасстановка кораблей игрока ===";
-
     _playerField.reset();
     _playerField.automaticShipsPlacing();
 
@@ -277,12 +312,6 @@ void ModelAdapterNetwork::startGame() {
     _gameOver = false;
     _isMyTurn = true;
     _playerFieldBlocked = false;
-    _turnStatus = "Ваш ход!";
-    qDebug() << "=== startGame() ===";
-    qDebug() << "_gameStarted =" << _gameStarted;
-    qDebug() << "_isMyTurn =" << _isMyTurn;
-    qDebug() << "_playerFieldBlocked =" << _playerFieldBlocked;
-
     emit turnStatusChanged();
     emit gameStatusChanged();
     emit playerFieldUpdated();
@@ -292,11 +321,14 @@ void ModelAdapterNetwork::startGame() {
 
 
 
+Q_INVOKABLE bool ModelAdapterNetwork::isGameStarted() const {
+    return _gameStarted;
+}
 
 
 
 
-QString ModelAdapterNetwork::getTurnStatus() {
+QString ModelAdapterNetwork::getTurnStatus() const {
     if (_gameWon) {
         return "🏆 ПОБЕДА! 🏆";
     } else if (_gameOver) {
@@ -314,18 +346,25 @@ QString ModelAdapterNetwork::getTurnStatus() {
 
 
 
+Q_INVOKABLE void ModelAdapterNetwork::setTurnStatus(const QString& status) {
+    _turnStatus = status;
+    emit turnStatusChanged();
+}
+
+
+
+
+
 
 
 QString ModelAdapterNetwork::getPlayerGameStatus() {
     int shipsDestroyed = 0;
     int totalShips = _playerField.getShips().size();
-
     for (const Ship& ship : _playerField.getShips()) {
         if (ship.isDestroyed()) {
             shipsDestroyed++;
         }
     }
-
     return QString("Корабли уничтожены: %1 / %2").arg(shipsDestroyed).arg(totalShips);
 }
 
@@ -343,12 +382,27 @@ QString ModelAdapterNetwork::getEnemyGameStatus() {
 
 
 
+Q_INVOKABLE bool ModelAdapterNetwork::isPlayerFieldBlocked() const {
+    // Если игра не началась - поле заблокировано
+    if (!_gameStarted) {
+        return true;
+    }
+    // Если игра закончена - поле заблокировано
+    if (_gameWon || _gameOver) {
+        return true;
+    }
+    // Если не наш ход - поле заблокировано
+    return !_isMyTurn;
+}
+
+
+
+
+
 
 void ModelAdapterNetwork::checkWinCondition() {
     bool playerLost = _playerField.isAllShipsIsDestroyed();
     bool playerWon = _enemyField.isAllShipsIsDestroyed();
-
-    qDebug() << "checkWinCondition: playerLost =" << playerLost << "playerWon =" << playerWon;
 
     if (playerLost && !_gameOver) {
         _gameOver = true;

@@ -15,14 +15,12 @@ Item {
     property bool isServer: false
     property bool clientReady: false
     onClientReadyChanged: {
-        console.log("clientReady изменился на:", clientReady)
         updateGameButtonState()
     }
     property bool gameStarted: false
 
     property bool playerReady: false
     onPlayerReadyChanged: {
-        console.log("playerReady изменился на:", playerReady)
         updateGameButtonState()
     }
 
@@ -46,7 +44,6 @@ Item {
             })
             return result || "127.0.0.1"
         } catch(e) {
-            console.warn("Failed to read lastAddress:", e)
             return "127.0.0.1"
         }
     }
@@ -66,7 +63,6 @@ Item {
             })
             return result || "8080"
         } catch(e) {
-            console.warn("Failed to read lastPort:", e)
             return "8080"
         }
     }
@@ -653,7 +649,6 @@ Item {
                                         anchors.fill: parent
                                         enabled: true
                                         onClicked: {
-                                            console.log("Клик по клетке поля противника:", index)
                                             if (root.model && root.model.isGameStarted() && root.model.isMyTurn()) {
                                                 root.model.shot(index)
                                             }
@@ -735,11 +730,9 @@ Item {
                             enabled: {
                                 if (root.isServer) {
                                     var result = root.isConnected && root.clientReady && !root.gameStarted && !root.playerReady
-                                    console.log("gameButton.enabled вычисление (сервер):", result)
                                     return result
                                 } else {
                                     var result = root.isConnected && !root.playerReady && !root.gameStarted
-                                    console.log("gameButton.enabled вычисление (клиент):", result)
                                     return result
                                 }
                             }
@@ -761,7 +754,6 @@ Item {
                             onClicked: {
                                 if (root.isServer) {
                                     if (root.model) {
-                                        console.log("СЕРВЕР: Нажата кнопка Начать игру")
                                         root.model.setMyTurn(true)
                                         root.model.startGame()
                                         root.gameStarted = true
@@ -772,13 +764,10 @@ Item {
                                         playerStatusText.text = root.model.getPlayerGameStatus()
                                         turnIndicatorText.text = root.model.getTurnStatus()
                                         root.updateGameButtonState()
-                                        console.log("Сервер: isMyTurn=" + root.model.isMyTurn())
-                                        console.log("Сервер: isPlayerFieldBlocked=" + root.model.isPlayerFieldBlocked())
                                         clearAllCells()
                                     }
                                 } else {
                                     if (root.model) {
-                                        console.log("КЛИЕНТ: Нажата кнопка Готов")
                                         root.playerReady = true
                                         backend.sendMessage("player_ready")
                                         backend.receiveMessage("Система", "Вы готовы к игре. Ожидайте начала.")
@@ -974,16 +963,12 @@ Item {
     Connections {
         target: backend
         function onNewMessageReceived(sender, text) {
-            console.log("onNewMessageReceived: sender=" + sender + ", text=" + text)
 
             if (text === "player_ready") {
-                console.log("СЕРВЕР: Получен player_ready от клиента")
                 root.clientReady = true
                 root.updateGameButtonState()
                 backend.receiveMessage("Система", "Противник готов к игре!")
-                console.log("Получен player_ready, clientReady=" + root.clientReady)
             } else if (text === "game_start") {
-                console.log("КЛИЕНТ: Получен game_start от сервера")
                 if (root.model) {
                     root.gameStarted = true
                     root.playerReady = true
@@ -997,8 +982,6 @@ Item {
                     backend.receiveMessage("Система", "Игра началась! Ход противника.")
                     root.updateGameButtonState()
                     clearAllCells()
-                    console.log("Клиент: gameStarted=" + root.gameStarted +
-                                       ", isMyTurn=" + root.model.isMyTurn())
                 }
             } else if (text === "game_over") {
                 if (root.model) {
@@ -1019,7 +1002,6 @@ Item {
         }
 
         function onUpdateGameButtonState() {
-            console.log("Получен сигнал updateGameButtonState")
             root.updateGameButtonState()
         }
     }
@@ -1035,7 +1017,6 @@ Item {
         function onGameWonSignal() {
             gameStarted = false
             playerReady = false
-            console.log("Получен сигнал onGameWonSignal gameStarted ==>", gameStarted)
             enemyStatusText.text = "🏆 ПОБЕДА! 🏆\nВсе корабли противника уничтожены!"
             enemyStatusText.color = "#e74c3c"
             turnIndicatorText.text = root.model.getTurnStatus()
@@ -1050,7 +1031,6 @@ Item {
         function onGameOverSignal() {
             gameStarted = false
             playerReady = false
-            console.log("Получен сигнал onGameOverSignal gameStarted ==>", gameStarted)
             playerStatusText.text = "ВЫ ПРОИГРАЛИ! 💀\nВсе ваши корабли уничтожены!"
             playerStatusText.color = "black"
             turnIndicatorText.text = root.model.getTurnStatus()
@@ -1090,12 +1070,10 @@ Item {
         }
 
         function onShotRequested(index) {
-            console.log("Отправка выстрела через backend, индекс:", index)
             backend.shotMessage(String(index))
         }
 
         function onUpdateGameButtonState() {
-            console.log("Получен сигнал updateGameButtonState от модели")
             root.updateGameButtonState()
         }
     }

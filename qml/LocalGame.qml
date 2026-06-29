@@ -71,13 +71,14 @@ Item {
             Item { Layout.fillWidth: true }
 
             Rectangle {
+                id: turnStatus
                 Layout.preferredWidth: 300
                 Layout.preferredHeight: 40
                 color: "#3498db"
                 radius: 10
                 visible: adapter
-
                 Text {
+                    id: turnStatusText
                     anchors.centerIn: parent
                     text: adapter ? adapter.getTurnStatus() : ""
                     font.pixelSize: 18
@@ -355,7 +356,12 @@ Item {
         }
 
         function onTurnStatusChanged() {
-            // Индикатор хода обновляется автоматически
+            turnStatusText.text = adapter ? adapter.getTurnStatus() : ""
+            if(adapter.isPlayerTurn()) {
+                turnStatus.color = "green";
+            } else {
+                turnStatus.color = "red";
+            }
         }
     }
 

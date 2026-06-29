@@ -19,11 +19,11 @@ class ModelAdapterNetwork : public QObject {
   public:
     explicit ModelAdapterNetwork(QObject *parent = nullptr);
 
-           // Методы для поля игрока
+    // Методы для поля игрока
     Q_INVOKABLE bool getPlayerCellIsOccupied(int index);
     Q_INVOKABLE bool getPlayerCellIsShoted(int index);
 
-           // Методы для поля противника
+    // Методы для поля противника
     Q_INVOKABLE bool getEnemyCellIsOccupied(int index);
     Q_INVOKABLE bool getEnemyCellIsShoted(int index);
 
@@ -31,46 +31,28 @@ class ModelAdapterNetwork : public QObject {
     Q_INVOKABLE void newGame();
     Q_INVOKABLE QString getPlayerGameStatus();
     Q_INVOKABLE QString getEnemyGameStatus();
-    Q_INVOKABLE bool isPlayerFieldBlocked() const {
-        // Если игра не началась - поле заблокировано
-        if (!_gameStarted) {
-            return true;
-        }
-        // Если игра закончена - поле заблокировано
-        if (_gameWon || _gameOver) {
-            return true;
-        }
-        // Если не наш ход - поле заблокировано
-        return !_isMyTurn;
-    }
-    Q_INVOKABLE QString getTurnStatus();
-    Q_INVOKABLE void setTurnStatus(const QString& status) {
-        _turnStatus = status;
-        emit turnStatusChanged();
-    }
+    Q_INVOKABLE bool isPlayerFieldBlocked() const;
+    Q_INVOKABLE QString getTurnStatus() const;
+    Q_INVOKABLE void setTurnStatus(const QString& status);
     Q_INVOKABLE void shipPlacing();
     Q_INVOKABLE void startGame();
-    Q_INVOKABLE bool isGameStarted() const {
-        qDebug() << "isGameStarted() called, returning:" << _gameStarted;
-        return _gameStarted;
+    Q_INVOKABLE bool isGameStarted() const;
+    Q_INVOKABLE void setGameStarted(bool isStarted) {
+        _gameStarted = isStarted;
     }
-    Q_INVOKABLE void setGameStarted(bool isStarted) {_gameStarted = isStarted;};
     Q_INVOKABLE bool isGameOver() const {
         return _gameWon || _gameOver;
     }
 
-           // Для сетевой игры
     std::optional<ShotResult> setShot(const QString& index);
     void setResult(const QString& result, const QString& index);
-    Q_INVOKABLE void setMyTurn(bool isMyTurn) { _isMyTurn = isMyTurn; }
+    Q_INVOKABLE void setMyTurn(bool isMyTurn) {
+        _isMyTurn = isMyTurn;
+    }
     Q_INVOKABLE bool isMyTurn() const {
         return _isMyTurn;
     }
-    Q_INVOKABLE void setPlayerFieldBlocked(bool blocked) {
-        _playerFieldBlocked = blocked;
-        updateTurnStatus();
-        emit gameStatusChanged();
-    }
+    Q_INVOKABLE void setPlayerFieldBlocked(bool blocked);
 
     Q_INVOKABLE std::vector<Cell>& getEnemyFieldRef() {
         return const_cast<std::vector<Cell>&>(_enemyField.getPlayingField());
@@ -79,68 +61,8 @@ class ModelAdapterNetwork : public QObject {
     Q_INVOKABLE void updateGameStatus() {
         emit gameStatusChanged();
     }
-
-
-
-    Q_INVOKABLE void resetGame() {
-        _playerField.reset();
-        _playerField.automaticShipsPlacing();
-        _enemyField.reset();
-        _enemyField.automaticShipsPlacing();
-
-        _gameWon = false;
-        _gameOver = false;
-        _playerFieldBlocked = true;
-        _gameStarted = false;
-        _isMyTurn = false;
-        _turnStatus = "Ожидание начала игры...";
-
-        emit turnStatusChanged();
-        emit gameStatusChanged();
-        emit playerFieldUpdated();
-        emit updateGameButtonState();
-
-        qDebug() << "=== Игра сброшена ===";
-    }
-
-
-    Q_INVOKABLE void gameWon() {
-        _gameWon = true;
-        _gameOver = true;
-        _playerFieldBlocked = true;
-        _gameStarted = false;
-        _turnStatus = "🏆 ПОБЕДА! 🏆";
-
-        _enemyField.reset();
-        _enemyField.automaticShipsPlacing();
-        _playerField.reset();
-        _playerField.automaticShipsPlacing();
-        _enemyShipsDestroyed = 0;
-
-        emit gameWonSignal();
-        emit turnStatusChanged();
-        emit gameStatusChanged();
-        emit updateGameButtonState();
-    }
-
-    Q_INVOKABLE void gameOver() {
-        _gameWon = false;
-        _gameOver = true;
-        _playerFieldBlocked = true;
-        _gameStarted = false;
-        _turnStatus = "💀 ВЫ ПРОИГРАЛИ! 💀";
-
-        _enemyField.reset();
-        _enemyField.automaticShipsPlacing();
-        _playerField.reset();
-        _playerField.automaticShipsPlacing();
-        _enemyShipsDestroyed = 0;
-
-        emit gameOverSignal();
-        emit turnStatusChanged();
-        emit gameStatusChanged();
-        emit updateGameButtonState();
-    }
+    Q_INVOKABLE void gameWon();
+    Q_INVOKABLE void gameOver();
 
     void increaseEnemyShipsDestroyed() {
         _enemyShipsDestroyed++;

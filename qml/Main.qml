@@ -42,7 +42,7 @@ Window {
                     Layout.preferredWidth: 300
                     Layout.preferredHeight: 60
                     onClicked: {
-                        localAdapter.newGame()
+                        localAdapter.updateTurnStatus()
                         gameMode = 1
                     }
                     background: Rectangle {

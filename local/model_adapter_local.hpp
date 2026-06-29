@@ -30,6 +30,8 @@ public:
         return _playerFieldBlocked;
     }
     Q_INVOKABLE QString getTurnStatus();
+    Q_INVOKABLE bool isPlayerTurn() const;
+    Q_INVOKABLE void updateTurnStatus();
 
 signals:
     void gameStatusChanged();
@@ -39,14 +41,16 @@ signals:
 
 private:
     void checkWinCondition();
-    void updateTurnStatus();
+
 
     Model   _model;               // поле бота
     Bot     _bot;                 // бот, который содержит поле игрока
     bool    _gameWon = false;
     bool    _gameOver = false;
     bool    _playerFieldBlocked = false;    // признак блокировки поля игрока
-    QString _turnStatus = "Ваш ход";        // текущий статус хода
+    QString _turnStatus = "Ожидание начала игры ...";        // текущий статус хода
+    bool    _isPlayerTurn;
+    bool    _isGameStarted;
 };
 
 #endif // MODEL_ADAPTER_LOCAL_HPP

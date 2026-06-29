@@ -1,5 +1,4 @@
 #include <QDebug>
-#include <iostream>
 #include <QTimer>
 
 #include "model_adapter_local.hpp"
@@ -9,7 +8,9 @@
 ModelAdapterLocal::ModelAdapterLocal(QObject *parent)
     : QObject(parent)
     , _gameWon(false)
-    , _gameOver(false){
+    , _gameOver(false)
+    , _isPlayerTurn(false)
+    , _isGameStarted(false) {
     _model.automaticShipsPlacing();
     _bot._model.automaticShipsPlacing();
     updateTurnStatus();
@@ -105,6 +106,7 @@ void ModelAdapterLocal::shot(int index) {
         if (!_gameWon && is_miss) {
             _playerFieldBlocked = true;
             _turnStatus = "Ход бота...";
+            _isPlayerTurn = false;
             emit turnStatusChanged();
             emit gameStatusChanged();
             // Используем QTimer для небольшой задержки перед ходом бота
@@ -118,6 +120,7 @@ void ModelAdapterLocal::shot(int index) {
         } else if(!_gameWon && !is_miss) {
             // Если попал, ход остается за игроком
             _turnStatus = "Ваш ход (попадание!)";
+            _isPlayerTurn = true;
             emit turnStatusChanged();
             emit gameStatusChanged();
         }
@@ -130,7 +133,8 @@ void ModelAdapterLocal::shot(int index) {
 void ModelAdapterLocal::botMove() {
     if (_gameWon || _gameOver) {
         _playerFieldBlocked = false;
-        _turnStatus = "Ваш ход";
+        _turnStatus = "Ход бота ...";
+        _isPlayerTurn = false;
         emit turnStatusChanged();
         emit gameStatusChanged();
         return;
@@ -162,6 +166,7 @@ void ModelAdapterLocal::botMove() {
                 // Если бот попал и игра не окончена, делаем еще один ход с задержкой
                 if (!_gameWon && !_gameOver) {
                     _turnStatus = "Ход бота (попадание!)";
+                    _isPlayerTurn = false;
                     emit turnStatusChanged();
                     emit gameStatusChanged();
                     QTimer::singleShot(500, this, [this]() {
@@ -170,6 +175,7 @@ void ModelAdapterLocal::botMove() {
                 } else {
                     _playerFieldBlocked = false;
                     _turnStatus = "Игра окончена";
+                    _isPlayerTurn = false;
                     emit turnStatusChanged();
                     emit gameStatusChanged();
                 }
@@ -180,6 +186,7 @@ void ModelAdapterLocal::botMove() {
                     // После промаха ход переходит к игроку
                     _playerFieldBlocked = false;
                     _turnStatus = "Ваш ход";
+                    _isPlayerTurn = true;
                     emit turnStatusChanged();
                     emit gameStatusChanged();
                 } else {
@@ -187,8 +194,10 @@ void ModelAdapterLocal::botMove() {
                     _playerFieldBlocked = false;
                     if (_gameWon) {
                         _turnStatus = "🏆 ПОБЕДА! 🏆";
+                        _isPlayerTurn = false;
                     } else if (_gameOver) {
                         _turnStatus = "💀 ВЫ ПРОИГРАЛИ! 💀";
+                        _isPlayerTurn = false;
                     }
                     emit turnStatusChanged();
                     emit gameStatusChanged();
@@ -210,53 +219,28 @@ void ModelAdapterLocal::newGame() {
     _gameOver = false;
     _playerFieldBlocked = false;
     _turnStatus = "Ваш ход";
-    /*
-    qDebug() << __FUNCTION__;
-    std::cout << "Поле бота:" << std::endl;
-    for(int i = 0; i < _model.getPlayingField().size(); ++i) {
-        if(i%10 == 0) {
-            std::cout << std::endl;
-        }
-        if(_model.getPlayingField()[i]._isOccupied) {
-            std::cout << "+ ";
-        } else if(_model.getPlayingField()[i]._isAllowed == false) {
-            std::cout << "  ";
-        }
-        else{
-            std::cout << "  ";
-        }
-
-    }
-    std::cout << std::endl;
-    std::cout << std::endl;
-
-    std::cout << "Поле игрока:" << std::endl;
-    for(int i = 0; i < _bot._model.getPlayingField().size(); ++i) {
-        if(i%10 == 0) {
-            std::cout << std::endl;
-        }
-        if(_bot._model.getPlayingField()[i]._isOccupied) {
-            std::cout << "+ ";
-        } else if(_bot._model.getPlayingField()[i]._isAllowed == false) {
-            std::cout << "  ";
-        }
-        else{
-            std::cout << "  ";
-        }
-
-    }
-    std::cout << std::endl;
-    std::cout << std::endl;
-    */
+    _isPlayerTurn = true;
+    _isGameStarted = true;
     emit turnStatusChanged();
     emit gameStatusChanged();
 }
 
 
+
+
 QString ModelAdapterLocal::getTurnStatus() {
-    qDebug() << __FUNCTION__ << "_turnStatus =>" << _turnStatus;
     return _turnStatus;
 }
+
+
+
+
+bool ModelAdapterLocal::isPlayerTurn() const
+{
+    return _isPlayerTurn;
+}
+
+
 
 
 QString ModelAdapterLocal::getBotGameStatus() {
@@ -303,6 +287,8 @@ void ModelAdapterLocal::checkWinCondition() {
         _playerFieldBlocked = false;
         qDebug() << "BOT WINS! Game Over!";
         _turnStatus = "💀 ВЫ ПРОИГРАЛИ! 💀";
+        _isPlayerTurn = false;
+        _isGameStarted = false;
         emit turnStatusChanged();
         emit gameStatusChanged();
         emit gameOver();
@@ -314,6 +300,8 @@ void ModelAdapterLocal::checkWinCondition() {
         qDebug() << "PLAYER WINS!";
         _playerFieldBlocked = false;
         _turnStatus = "🏆 ПОБЕДА! 🏆";
+        _isPlayerTurn = false;
+        _isGameStarted = false;
         emit turnStatusChanged();
         qDebug() << "PLAYER WINS!";
         emit gameWon();
@@ -324,14 +312,18 @@ void ModelAdapterLocal::checkWinCondition() {
 
 
 void ModelAdapterLocal::updateTurnStatus() {
-    if (_gameWon) {
-        _turnStatus = "🏆 ПОБЕДА! 🏆";
-    } else if (_gameOver) {
-        _turnStatus = "💀 ВЫ ПРОИГРАЛИ! 💀";
-    } else if (_playerFieldBlocked) {
-        _turnStatus = "Ход бота...";
+    if(_isGameStarted) {
+        if (_gameWon) {
+            _turnStatus = "🏆 ПОБЕДА! 🏆";
+            _isPlayerTurn = false;
+            _isGameStarted = false;
+        } else if (_gameOver) {
+            _turnStatus = "💀 ВЫ ПРОИГРАЛИ! 💀";
+            _isPlayerTurn = false;
+            _isGameStarted = false;
+        }
     } else {
-        _turnStatus = "Ваш ход";
+        _turnStatus = "Ожидание начала игры ...";
     }
     emit turnStatusChanged();
 }

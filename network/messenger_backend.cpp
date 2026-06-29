@@ -2,6 +2,9 @@
 #include <QDebug>
 #include <QTimer>
 
+
+
+
 MessengerBackend::MessengerBackend(QObject *parent)
     : QObject(parent)
       , _currentUser("Абонент")
@@ -135,7 +138,6 @@ void MessengerBackend::sendMessage(const QString &text)
     }
 
     _networkManager->sendMessage(_currentUser, msg.text);
-    qDebug() << "Отправлено сообщение от" << _currentUser << ":" << text;
 }
 
 
@@ -159,7 +161,6 @@ void MessengerBackend::shotMessage(const QString &index)
 
     QString msgText = "shot " + index.trimmed();
     _networkManager->sendMessage(_currentUser, msgText);
-    qDebug() << "Выстрел от" << _currentUser << ":" << msgText;
 }
 
 
@@ -186,8 +187,6 @@ void MessengerBackend::receiveMessage(const QString &sender, const QString &text
 
            // Обработка выстрела
     if (!messageParts.empty() && messageParts[0] == "shot" && messageParts.size() == 2) {
-        qDebug() << "Получен выстрел от" << sender << "индекс:" << messageParts[1];
-
         bool ok;
         int index = messageParts[1].toInt(&ok);
         if (ok) {
@@ -207,7 +206,6 @@ void MessengerBackend::receiveMessage(const QString &sender, const QString &text
 
     // Обработка результата выстрела
     if (!messageParts.empty() && messageParts[0] == "result" && messageParts.size() == 3) {
-        qDebug() << "Получен результат:" << messageParts[1] << "индекс:" << messageParts[2];
         _gameModel->setResult(messageParts[1], messageParts[2]);
         int res = messageParts[1].toInt();
         if (res == Result::Miss) {
@@ -227,21 +225,16 @@ void MessengerBackend::receiveMessage(const QString &sender, const QString &text
         return;
     }
 
-           // Обработка команд
+    // Обработка команд
     if (text == "player_ready") {
-        qDebug() << "Получен player_ready от" << sender;
         emit newMessageReceived(sender, text);
         emit updateGameButtonState();
-        _messages.append(msg);
-        emit messagesChanged();
         return;
     } else if (text == "game_start") {
         _gameModel->setMyTurn(false);
         _gameModel->setGameStarted(true);
         emit newMessageReceived(sender, text);
         emit updateGameButtonState();
-        _messages.append(msg);
-        emit messagesChanged();
         _gameModel->setEnemyShipsDestroyed(0);
         return;
     } else if(text == "game_over") {
@@ -251,11 +244,10 @@ void MessengerBackend::receiveMessage(const QString &sender, const QString &text
         return;
     }
 
-           // Обычное сообщение
+    // Обычное сообщение
     _messages.append(msg);
     emit messagesChanged();
     emit newMessageReceived(sender, text);
-    qDebug() << "Получено сообщение от" << sender << ":" << text;
 }
 
 
@@ -282,6 +274,5 @@ void MessengerBackend::sendShotResultMessage(Result shotResult, int index)
     QString messageText = "result " + QString::number(shotResult) + " " + QString::number(index);
     if (_networkManager->isConnected()) {
         _networkManager->sendMessage(_currentUser, messageText);
-        qDebug() << "Отправлен результат:" << messageText;
     }
 }
