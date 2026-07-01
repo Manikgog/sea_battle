@@ -184,7 +184,7 @@ Q_INVOKABLE void ModelAdapterNetwork::gameWon() {
     emit gameWonSignal();
     emit turnStatusChanged();
     emit gameStatusChanged();
-    emit updateGameButtonState();
+    //emit updateGameButtonState();
 }
 
 
@@ -289,7 +289,7 @@ void ModelAdapterNetwork::newGame() {
     _playerField.reset();
     _playerField.automaticShipsPlacing();
     _enemyField.reset();
-    _enemyField.automaticShipsPlacing();
+    //_enemyField.automaticShipsPlacing();
 
     _gameWon = false;
     _gameOver = false;
@@ -312,11 +312,13 @@ void ModelAdapterNetwork::newGame() {
 
 
 void ModelAdapterNetwork::startGame() {
+    _enemyField.reset();
     _gameStarted = true;
     _gameWon = false;
     _gameOver = false;
     _isMyTurn = true;
     _playerFieldBlocked = false;
+    _gameStarted = true;
     emit turnStatusChanged();
     emit gameStatusChanged();
     emit playerFieldUpdated();

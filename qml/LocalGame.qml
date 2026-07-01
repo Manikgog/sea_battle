@@ -363,6 +363,14 @@ Item {
                 turnStatus.color = "red";
             }
         }
+
+        function onShipsIsNotPlacing() {
+            gameMessageDialog.title = "Ошибка расстановки кораблей"
+            gameMessageDialog.text = "Попробуйте расставить снова"
+            gameMessageDialog.open()
+            turnStatus.color = "grey"
+            turnStatusText.text = "Ошибка расстановки кораблей"
+        }
     }
 
     Component.onCompleted: {

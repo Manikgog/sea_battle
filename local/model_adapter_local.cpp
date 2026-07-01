@@ -11,8 +11,12 @@ ModelAdapterLocal::ModelAdapterLocal(QObject *parent)
     , _gameOver(false)
     , _isPlayerTurn(false)
     , _isGameStarted(false) {
-    _model.automaticShipsPlacing();
-    _bot._model.automaticShipsPlacing();
+    if(!_model.automaticShipsPlacing()) {
+        _playerShipsIsNotPlacing = true;
+    }
+    if(!_bot._model.automaticShipsPlacing()) {
+        _botShipsIsNotPlacing = true;
+    }
     updateTurnStatus();
 }
 
@@ -80,16 +84,24 @@ void ModelAdapterLocal::shot(int index) {
     if (index < 0 || index >= static_cast<int>(_model.getPlayingField().size())) {
         return;
     }
+    std::optional<bool> isShotedOptional = _model.isCellShoted(index);
+    if(!isShotedOptional.has_value()) {
+        return;
+    }
+    bool isShoted = isShotedOptional.value();
 
-    auto& botField = const_cast<std::vector<Cell>&>(_model.getPlayingField());
-    auto& cell = botField[index];
-
-    if (!cell._isShoted) {
+    if (!isShoted) {
         qDebug() << "Player shoots at bot cell:" << index;
 
-        cell._isShoted = true;
+        _model.setShoted(index);
         bool is_miss = true;
-        if(cell._isOccupied) {
+        std::optional<bool> isOccupiedOptional = _model.isCellOccupied(index);
+        if(!isOccupiedOptional.has_value()) {
+            return;
+        }
+        bool isOccupied = isOccupiedOptional.value();
+
+        if(isOccupied) {
             is_miss = false;
             // Проверка на уничтожение корабля у бота
             for (const Ship& ship : _model.getShips()) {
@@ -144,16 +156,23 @@ void ModelAdapterLocal::botMove() {
     int index = _bot.shoot();
     qDebug() << "Bot shoots at player cell:" << index;
 
-    auto& playerField = const_cast<std::vector<Cell>&>(_bot._model.getPlayingField());
-    if (index >= 0 && index < static_cast<int>(playerField.size())) {
-        auto& cell = playerField[index];
-        if (!cell._isShoted) {
+    if (index >= 0 && index < static_cast<int>(_bot._model.getFieldSize())) {
+        std::optional<bool> isShotedOptional = _bot._model.isCellShoted(index);
+        if(!isShotedOptional.has_value()) {
+            return;
+        }
+        bool isShoted = isShotedOptional.value();
+        if (!isShoted) {
             int destroyed_ships_before = _bot._model.getDestroyedShipsAmount();
-            cell._isShoted = true;
+            _bot._model.setShoted(index);
 
-            if (cell._isOccupied) {
+            std::optional<bool> isOccupeidOptional = _bot._model.isCellOccupied(index);
+            if(!isOccupeidOptional.has_value()) {
+                return;
+            }
+            bool isOccupied = isOccupeidOptional.value();
+            if (isOccupied) {
                 int destroyed_ships_after = _bot._model.getDestroyedShipsAmount();
-
                 if(destroyed_ships_after > destroyed_ships_before) {
                     _bot.setHit(index, true);
                 } else {
@@ -212,9 +231,21 @@ void ModelAdapterLocal::botMove() {
 
 void ModelAdapterLocal::newGame() {
     _model.reset();
-    _model.automaticShipsPlacing();
+    if(!_model.automaticShipsPlacing()) {
+        _turnStatus = "Ошибка расстановки кораблей";
+        _playerShipsIsNotPlacing = true;
+        emit shipsIsNotPlacing();
+        return;
+    }
     _bot.reset();
-    _bot._model.automaticShipsPlacing();
+    if(!_bot._model.automaticShipsPlacing()) {
+        _turnStatus = "Ошибка расстановки кораблей";
+        _botShipsIsNotPlacing = true;
+        emit shipsIsNotPlacing();
+        return;
+    }
+    _botShipsIsNotPlacing = false;
+    _playerShipsIsNotPlacing = false;
     _gameWon = false;
     _gameOver = false;
     _playerFieldBlocked = false;
@@ -243,7 +274,9 @@ bool ModelAdapterLocal::isPlayerTurn() const
 
 
 QString ModelAdapterLocal::getBotGameStatus() {
-
+    if(_model.isFieldEmpty()) {
+        return QString("Корабли не расставлены");
+    }
     int shipsDestroyed = 0;
     int totalShips = _model.getShips().size();
 
@@ -259,7 +292,9 @@ QString ModelAdapterLocal::getBotGameStatus() {
 
 
 QString ModelAdapterLocal::getPlayerGameStatus() {
-
+    if(_bot._model.isFieldEmpty()) {
+        return QString("Корабли не расставлены");
+    }
     int shipsDestroyed = 0;
     int totalShips = _bot._model.getShips().size();
 
@@ -309,6 +344,10 @@ void ModelAdapterLocal::checkWinCondition() {
 
 
 void ModelAdapterLocal::updateTurnStatus() {
+    if(_playerShipsIsNotPlacing || _botShipsIsNotPlacing) {
+        emit shipsIsNotPlacing();
+        return;
+    }
     if(_isGameStarted) {
         if (_gameWon) {
             _turnStatus = "🏆 ПОБЕДА! 🏆";

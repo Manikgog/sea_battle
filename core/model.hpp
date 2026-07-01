@@ -2,6 +2,7 @@
 #define MODEL_HPP
 
 #include <vector>
+#include <map>
 #include "ship.hpp"
 
 enum Side {
@@ -25,6 +26,7 @@ class Model {
 
     Point getPoint(int number);
     const std::vector<Cell>& getPlayingField() const;
+    bool isFieldEmpty() const;
 
     const std::vector<Ship>& getShips() const;
     int getDestroyedShipsAmount() const;
@@ -33,6 +35,30 @@ class Model {
     }
     int getColumns() {
         return _columns;
+    }
+
+    int getFieldSize() const {
+        return _playingField.size();
+    }
+
+    std::optional<bool> isCellShoted(int index) const {
+        if(index >= 0 && index < _playingField.size()) {
+            return _playingField[index]._isShoted;
+        }
+        return {};
+    }
+
+    std::optional<bool> isCellOccupied(int index) const {
+        if(index >= 0 && index < _playingField.size()) {
+            return _playingField[index]._isOccupied;
+        }
+        return {};
+    }
+
+    void setShoted(int index) {
+        if(index >= 0 && index < _playingField.size()) {
+            _playingField[index]._isShoted = true;
+        }
     }
 
   private:
@@ -50,7 +76,7 @@ class Model {
     int _columns = 10;
     std::vector<Cell> _playingField;
     std::vector<Ship> _ships;
-    std::unordered_map<int, int> _amountShipsByCells;   // словарь где ключ - количество палуб, значение - количество кораблей;
+    std::map<int, int> _amountShipsByCells;   // словарь где ключ - количество кораблей, значение - количество палуб
 };
 
 #endif // MODEL_HPP

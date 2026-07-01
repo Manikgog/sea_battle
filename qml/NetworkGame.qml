@@ -592,6 +592,7 @@ Item {
                                 root.updateAllCells();
                                 playerStatusText.text = root.model.getPlayerGameStatus();
                                 turnIndicatorText.text = root.model.getTurnStatus();
+                                playerReady = false
                                 root.updateGameButtonState()
                             }
                         }
@@ -997,7 +998,7 @@ Item {
                     playerStatusText.text = root.model.getPlayerGameStatus()
                     turnIndicatorText.text = root.model.getTurnStatus()
                     backend.receiveMessage("Система", "Вы выиграли!")
-                    root.updateGameButtonState()
+                    //root.updateGameButtonState()
                 }
             }
         }
@@ -1017,12 +1018,13 @@ Item {
 
         function onGameWonSignal() {
             gameStarted = false
-            playerReady = false
+            playerReady = true
             enemyStatusText.text = "🏆 ПОБЕДА! 🏆\nВсе корабли противника уничтожены!"
             enemyStatusText.color = "#e74c3c"
             turnIndicatorText.text = root.model.getTurnStatus()
             root.updateAllCells()
             shipPlacementButton.enabled = true
+            gameButton.enabled = false
             root.updateGameButtonState()
             // gameMessageDialog.title = "Победа!"
             // gameMessageDialog.text = "🎉 ПОЗДРАВЛЯЕМ! 🎉\nВы уничтожили все корабли противника!"
@@ -1031,7 +1033,7 @@ Item {
 
         function onGameOverSignal() {
             gameStarted = false
-            playerReady = false
+            playerReady = true
             playerStatusText.text = "ВЫ ПРОИГРАЛИ! 💀\nВсе ваши корабли уничтожены!"
             playerStatusText.color = "black"
             turnIndicatorText.text = root.model.getTurnStatus()

@@ -1,5 +1,4 @@
 #include <QDebug>
-#include <iostream>
 #include "model.hpp"
 #include "utils.hpp"
 
@@ -7,7 +6,7 @@
 Model::Model() {
     int amountShips = 4;    // количество кораблей
     for(int cells = 1; cells <= 4; cells++) {               // cell - количество палуб на корабле
-        _amountShipsByCells.insert({cells, amountShips});
+        _amountShipsByCells.insert({amountShips, cells});
         amountShips--;
     }
     _playingField.resize(_rows * _columns);
@@ -30,42 +29,19 @@ bool Model::isAllShipsIsDestroyed() const {
  * @return true в случае удачного размещения
  */
 bool Model::automaticShipsPlacing() {
-    std::vector<int> vec_cells;
-    for(const auto p : _amountShipsByCells) {
-        vec_cells.push_back(p.first);
-    }
-    std::sort(vec_cells.rbegin(), vec_cells.rend());
 
-    int amount_ships = 1;
-    for(int cells : vec_cells) {
+    for(const auto[ships, cells]: _amountShipsByCells) {
         int ship_number = 0;
-        // if(cells == 2)
-        //     qDebug() << "|||||||||||||";
-        while(ship_number < amount_ships) {
+
+        while(ship_number < ships) {
             if(automaticPlacingShip(cells)) {
                 ship_number++;
-
-                       // int count_cells = 0;
-                       // for(int i = 0; i < _playingField.size(); ++i) {
-                       //     if(i%10 == 0) {
-                       //         std::cout << std::endl;
-                       //     }
-                       //     if(_playingField[i]._isOccupied) {
-                       //         count_cells++;
-                       //         std::cout << "+ ";
-                       //     } else if(_playingField[i]._isAllowed == false) {
-                       //         std::cout << "* ";
-                       //     }
-                       //     else{
-                       //         std::cout << "- ";
-                       //     }
-
-                       // }
-                       // std::cout << std::endl;
-                       // std::cout << std::endl;
+            } else {
+                _ships.clear();
+                _playingField.clear();
+                return false;
             }
         }
-        amount_ships++;
     }
     return true;
 }
@@ -497,14 +473,21 @@ void Model::addShip(int row, int column, Side side, int cells) {
  * @return true в случае удачного размещения
  */
 bool Model::automaticPlacingShip(int cells) {
-    while(true) {
+    int attempt_counter = 0;
+    while(attempt_counter < 100) {
         int position = getRandomNumber(0, 99);
         int row = position / 10;
         int column = position % 10;
+        int search_counter = 0;
         while(!isCellFree(row, column)) {
+            if(search_counter >= 100) {
+                qDebug() << __FUNCTION__ << "search_counter =>" << search_counter;
+                return false;
+            }
             position = getRandomNumber(0, 99);
             row = position / 10;
             column = position % 10;
+            search_counter++;
         }
         bool ok = true;
         std::vector<Side> sides{Side::left, Side::right, Side::up, Side::down};
@@ -528,7 +511,9 @@ bool Model::automaticPlacingShip(int cells) {
                 }
             }
         }
+        attempt_counter++;
     }
+    qDebug() << __FUNCTION__ << "attempt_counter =>" << attempt_counter;
     return false;
 }
 
@@ -538,6 +523,16 @@ const std::vector<Cell>& Model::getPlayingField() const {
     return _playingField;
 }
 
+
+
+bool Model::isFieldEmpty() const {
+    for(const Cell& cell : _playingField) {
+        if(cell._isOccupied) {
+            return false;
+        }
+    }
+    return true;
+}
 
 
 

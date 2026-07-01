@@ -38,6 +38,7 @@ signals:
     void gameWon();
     void gameOver();
     void turnStatusChanged();
+    void shipsIsNotPlacing();
 
 private:
     void checkWinCondition();
@@ -51,6 +52,8 @@ private:
     QString _turnStatus = "Ожидание начала игры ...";        // текущий статус хода
     bool    _isPlayerTurn;
     bool    _isGameStarted;
+    bool    _playerShipsIsNotPlacing = false;
+    bool    _botShipsIsNotPlacing = false;
 };
 
 #endif // MODEL_ADAPTER_LOCAL_HPP

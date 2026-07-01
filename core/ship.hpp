@@ -19,10 +19,6 @@ struct Ship {
         return true;
     }
 
-    const std::vector<Cell*> getCells() const {
-        return _cells;
-    }
-
     int getCellsAmount() const {
         return _cells.size();
     }
