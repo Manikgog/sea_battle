@@ -3,36 +3,42 @@
 
 #include <QDebug>
 #include <set>
+#include <optional>
+#include <functional>
 #include "../core/model.hpp"
 
 class Bot {
-
-  public:
-
+public:
     Bot();
-
     void reset();
     int shoot();
-    std::set<int> getMarkedCellsIndexes();
+    void setHit(int index, bool isDestroyed = false);
+    std::set<int> getMarkedCellsIndexes() const;
 
-    /**
-     * @brief setHit метод для отметки поражения палубы корабля
-     * @param index индекс в векторе _shots
-     */
-    void setHit(int index, bool is_desroyed = false);
+    Model _model;
+
+private:
+    // Основные методы
+    int randomShot();
     std::optional<int> horizontalSearch();
     std::optional<int> verticalSearch();
+    std::optional<int> searchInDirection(int startIndex, int step, int maxSteps, bool isHorizontal);
 
-    Model _model;               // класс с картой кораблей игрока, то есть по которому будет стрелять компьютер (бот)
+    // Методы для обработки попаданий
+    void markShot(int index);
+    void markDiagonalCells(int index);
+    void markSurroundingCells(int index);
+    void markHorizontalShip(int index);
+    void markVerticalShip(int index);
+    void markHorizontalNeighbors(int index);
+    void markVerticalNeighbors(int index);
 
-  private:
-    /**
-     * @brief isAllIndexesTrue проверка на случай если все клетки уже обстреляны
-     * @return
-     */
-    bool isAllIndexesTrue();
+    // Вспомогательные методы
+    bool isAllIndexesTrue() const;
+    bool isValidIndex(int index) const;
+    bool isWithinBounds(int row, int col) const;
 
-    std::vector<Cell> _shots;   // вектор для учёта произведенных ударов
+    std::vector<Cell> _shots;
 };
 
 #endif // BOT_HPP

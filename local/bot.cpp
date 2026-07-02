@@ -1,7 +1,6 @@
 #include "bot.hpp"
 #include "../core/utils.hpp"
 
-
 Bot::Bot() {
     _model = Model();
     int size = _model.getPlayingField().size();
@@ -15,316 +14,266 @@ void Bot::reset() {
 }
 
 int Bot::shoot() {
-    if(getRandomNumber(0, 1) == 1) {
-        auto search_result = horizontalSearch();
-        if(search_result.has_value()) {
-            return search_result.value();
-        }
-        search_result = verticalSearch();
-        if(search_result.has_value()) {
-            return search_result.value();
-        }
-    } else {
-        auto search_result = verticalSearch();
-        if(search_result.has_value()) {
-            return search_result.value();
-        }
-        search_result = horizontalSearch();
-        if(search_result.has_value()) {
-            return search_result.value();
+    // Определяем порядок поиска случайным образом
+    std::vector<std::function<std::optional<int>()>> search_methods = {
+        [this]() { return horizontalSearch(); },
+        [this]() { return verticalSearch(); }
+    };
+
+    if (getRandomNumber(0, 1) == 1) {
+        std::swap(search_methods[0], search_methods[1]);
+    }
+
+    for (auto& method : search_methods) {
+        auto result = method();
+        if (result.has_value()) {
+            return result.value();
         }
     }
 
+    // Случайный выстрел, если поиск не дал результатов
+    return randomShot();
+}
 
-   // for(int i = 0; i < 100; i+=11) {
-   //     if(_shots[i]._isShoted || _shots[i]._isOccupied) {
-   //         continue;
-   //     } else {
-   //         _shots[i]._isShoted = true;
-   //         return i;
-   //     }
-   // }
+int Bot::randomShot() {
+    if (isAllIndexesTrue()) {
+        return -1;
+    }
 
-   // for(int i = 9; i < 100; i+=9) {
-   //     if(_shots[i]._isShoted || _shots[i]._isOccupied) {
-   //         continue;
-   //     } else {
-   //         _shots[i]._isShoted = true;
-   //         return i;
-   //     }
-   // }
-
-
-    int index = getRandomNumber(0, _shots.size()-1);
-    while(_shots[index]._isShoted == true) {
-        index = getRandomNumber(0, _shots.size()-1);
-        if(isAllIndexesTrue()) {
-            return -1;
-        }
+    int index = getRandomNumber(0, _shots.size() - 1);
+    while (_shots[index]._isShoted) {
+        index = getRandomNumber(0, _shots.size() - 1);
     }
     _shots[index]._isShoted = true;
     return index;
 }
 
+std::optional<int> Bot::searchInDirection(int startIndex, int step, int maxSteps, bool isHorizontal) {
+    int row = startIndex / 10;
+    int col = startIndex % 10;
 
-/**
- * @brief Bot::getMarkedCellsNumber - метод для получения количества отмеченных клеточек, по которым уже не нужно стрелять
- * @return
- */
-std::set<int> Bot::getMarkedCellsIndexes() {
+    auto isValidInx = [&](int index) {
+        if (!isValidIndex(index)) {
+            return false;
+        }
+        if (isHorizontal) {
+            return (index / 10) == row; // Не выходим за пределы строки
+        }
+        return true;
+    };
+
+    // Проверяем обе стороны от найденной клетки
+    std::vector<int> directions = {step, -step};
+
+    for (int dir : directions) {
+        for (int i = 1; i < maxSteps; ++i) {
+            int currentIndex = startIndex + i * dir;
+            if (!isValidInx(currentIndex)) {
+                break;
+            }
+
+            if (_shots[currentIndex]._isShoted) {
+                if (_shots[currentIndex]._isOccupied) {
+                    continue; // Продолжаем искать дальше
+                } else {
+                    break; // Наткнулись на пустую клетку
+                }
+            } else {
+                // Нашли необстрелянную клетку
+                _shots[currentIndex]._isShoted = true;
+                return currentIndex;
+            }
+        }
+    }
+
+    return {};
+}
+
+std::optional<int> Bot::horizontalSearch() {
+    for (int i = 0; i < _shots.size(); ++i) {
+        if (_shots[i]._isShoted && _shots[i]._isOccupied) {
+            auto result = searchInDirection(i, 1, 5, true);
+            if (result.has_value()) {
+                return result;
+            }
+        }
+    }
+    return {};
+}
+
+std::optional<int> Bot::verticalSearch() {
+    for (int i = 0; i < _shots.size(); ++i) {
+        if (_shots[i]._isShoted && _shots[i]._isOccupied) {
+            auto result = searchInDirection(i, 10, 4, false);
+            if (result.has_value()) {
+                return result;
+            }
+        }
+    }
+    return {};
+}
+
+void Bot::setHit(int index, bool isDestroyed) {
+    markShot(index);
+    markDiagonalCells(index);
+
+    if (isDestroyed) {
+        markSurroundingCells(index);
+    }
+}
+
+void Bot::markShot(int index) {
+    _shots[index]._isShoted = true;
+    _shots[index]._isOccupied = true;
+}
+
+void Bot::markDiagonalCells(int index) {
+    int row = index / 10;
+    int col = index % 10;
+
+    std::vector<std::pair<int, int>> diagonals = {
+        {-1, -1}, {-1, 1}, {1, -1}, {1, 1}
+    };
+
+    for (auto [dr, dc] : diagonals) {
+        int newRow = row + dr;
+        int newCol = col + dc;
+        if (isWithinBounds(newRow, newCol)) {
+            int newIndex = newRow * 10 + newCol;
+            _shots[newIndex]._isShoted = true;
+        }
+    }
+}
+
+void Bot::markSurroundingCells(int index) {
+    // Определяем ориентацию корабля
+    bool isHorizontal = false;
+    bool isVertical = false;
+
+    // Проверяем соседние клетки по горизонтали
+    if (index % 10 > 0 && _shots[index - 1]._isOccupied) {
+        isHorizontal = true;
+    }
+    if (index % 10 < 9 && _shots[index + 1]._isOccupied) {
+        isHorizontal = true;
+    }
+
+    // Проверяем соседние клетки по вертикали
+    if (index >= 10 && _shots[index - 10]._isOccupied) {
+        isVertical = true;
+    }
+    if (index < 90 && _shots[index + 10]._isOccupied) {
+        isVertical = true;
+    }
+
+    if (isHorizontal) {
+        markHorizontalShip(index);
+    } else if (isVertical) {
+        markVerticalShip(index);
+    } else {
+        // Одиночный корабль (1 палуба)
+        markHorizontalNeighbors(index);
+        markVerticalNeighbors(index);
+    }
+}
+
+void Bot::markHorizontalShip(int index) {
+    int row = index / 10;
+
+    // Находим начало корабля
+    int firstCol = index % 10;
+    while (firstCol > 0 && _shots[row * 10 + firstCol - 1]._isOccupied) {
+        firstCol--;
+    }
+
+    // Находим конец корабля
+    int lastCol = index % 10;
+    while (lastCol < 9 && _shots[row * 10 + lastCol + 1]._isOccupied) {
+        lastCol++;
+    }
+
+    // Отмечаем клетки сверху и снизу от каждой палубы
+    for (int col = firstCol; col <= lastCol; ++col) {
+        int currentIndex = row * 10 + col;
+        markVerticalNeighbors(currentIndex);
+    }
+}
+
+void Bot::markVerticalShip(int index) {
+    int col = index % 10;
+
+    // Находим начало корабля
+    int firstRow = index / 10;
+    while (firstRow > 0 && _shots[(firstRow - 1) * 10 + col]._isOccupied) {
+        firstRow--;
+    }
+
+    // Находим конец корабля
+    int lastRow = index / 10;
+    while (lastRow < 9 && _shots[(lastRow + 1) * 10 + col]._isOccupied) {
+        lastRow++;
+    }
+
+    // Отмечаем клетки слева и справа от каждой палубы
+    for (int row = firstRow; row <= lastRow; ++row) {
+        int currentIndex = row * 10 + col;
+        markHorizontalNeighbors(currentIndex);
+    }
+}
+
+void Bot::markHorizontalNeighbors(int index) {
+    int row = index / 10;
+    int col = index % 10;
+
+    // Отмечаем клетку слева
+    if (col > 0) {
+        int leftIndex = row * 10 + (col - 1);
+        _shots[leftIndex]._isShoted = true;
+    }
+
+    // Отмечаем клетку справа
+    if (col < 9) {
+        int rightIndex = row * 10 + (col + 1);
+        _shots[rightIndex]._isShoted = true;
+    }
+}
+
+void Bot::markVerticalNeighbors(int index) {
+    int row = index / 10;
+    int col = index % 10;
+
+    // Отмечаем клетку сверху
+    if (row > 0) {
+        int upIndex = (row - 1) * 10 + col;
+        _shots[upIndex]._isShoted = true;
+    }
+
+    // Отмечаем клетку снизу
+    if (row < 9) {
+        int downIndex = (row + 1) * 10 + col;
+        _shots[downIndex]._isShoted = true;
+    }
+}
+
+bool Bot::isValidIndex(int index) const {
+    return index >= 0 && index < _shots.size();
+}
+
+bool Bot::isWithinBounds(int row, int col) const {
+    return row >= 0 && row < 10 && col >= 0 && col < 10;
+}
+
+bool Bot::isAllIndexesTrue() const {
+    return std::all_of(_shots.begin(), _shots.end(),
+                       [](const Cell& cell) { return cell._isShoted; });
+}
+
+std::set<int> Bot::getMarkedCellsIndexes() const {
     std::set<int> indexes;
-    for(int i = 0; i < _shots.size(); ++i) {
-        if(_shots[i]._isShoted) {
+    for (int i = 0; i < _shots.size(); ++i) {
+        if (_shots[i]._isShoted) {
             indexes.insert(i);
         }
     }
     return indexes;
-}
-
-/**
- * @brief setHit метод для отметки поражения палубы корабля и сосендних клеток для исключения ненужной стрельбы
- * @param index индекс в векторе _shots
- */
-void Bot::setHit(int index, bool is_desroyed) {
-    _shots[index]._isShoted = true;
-    _shots[index]._isOccupied = true;
-    if(index%10 != 0) { // если не крайняя левая клетка
-        int upper_diagonal_left_index = index - 11;
-        if(upper_diagonal_left_index >= 0) {
-            _shots[upper_diagonal_left_index]._isShoted = true;
-        }
-
-        int lower_diagonal_left_index = index + 9;
-        if(lower_diagonal_left_index < _shots.size()) {
-            _shots[lower_diagonal_left_index]._isShoted = true;
-        }
-    }
-
-    if(index%10 != 9) { // если не крайняя правая клетка
-        int upper_diagonal_right_index = index - 9;
-        if(upper_diagonal_right_index >= 0) {
-            _shots[upper_diagonal_right_index]._isShoted = true;
-        }
-
-        int lower_diagonal_right_index = index + 11;
-        if(lower_diagonal_right_index < _shots.size()) {
-            _shots[lower_diagonal_right_index]._isShoted = true;
-        }
-    }
-
-    if(is_desroyed) {
-        // определяем положение корабля, вертикальное или горизонтальное
-        int row = index/10;
-        int first_index_in_row = row * 10;
-        int last_index_in_row = first_index_in_row + 9;
-        int upper_index = index - 10;
-        // идем вверх и отмечаем левые и правые клетки для исключения из дальнейшей стрельбы
-        for(int i = upper_index; i >= 0; i-=10) {
-            if(_shots[i]._isOccupied && _shots[i]._isShoted) {
-                row = i/10;
-                first_index_in_row = row * 10;
-                last_index_in_row = first_index_in_row + 9;
-                int left_index = i - 1;
-                if(left_index < first_index_in_row) {
-                    break;
-                }
-                if(left_index >= 0 && i%10 != 0) {
-                    _shots[left_index]._isShoted = true;
-                }
-                int right_index = i + 1;
-                if(right_index > last_index_in_row) {
-                    break;
-                }
-                if(right_index < _shots.size() && i%10 != 9) {
-                    _shots[right_index]._isShoted = true;
-                }
-                continue;
-            }
-            if(!_shots[i]._isOccupied) {
-                _shots[i]._isShoted = true;
-                break;
-            }
-        }
-
-        int lower_index = index + 10;
-        // идём вниз и отмечаем левые и правые клетки для исключения из дальнейшей стрельбы
-        for(int i = lower_index; i < _shots.size(); i+=10) {
-            if(_shots[i]._isOccupied && _shots[i]._isShoted) {
-                row = i/10;
-                first_index_in_row = row * 10;
-                last_index_in_row = first_index_in_row + 9;
-                int left_index = i - 1;
-                if(left_index < first_index_in_row) {
-                    break;
-                }
-                if(left_index >= 0 && i%10 != 0) {
-                    _shots[left_index]._isShoted = true;
-                }
-                int right_index = i + 1;
-                if(right_index > last_index_in_row) {
-                    break;
-                }
-                if(right_index < _shots.size() && i%10 != 9) {
-                    _shots[right_index]._isShoted = true;
-                }
-                continue;
-            }
-            if(!_shots[i]._isOccupied) {
-                _shots[i]._isShoted = true;
-                break;
-            }
-        }
-
-        row = index/10;
-        first_index_in_row = row * 10;
-        last_index_in_row = first_index_in_row + 9;
-        // идём влево и отмечаем верхние и нижние клетки для исключения из дальнейшей стрельбы
-        int left_index = index - 1;
-        for(int i = left_index; i >= first_index_in_row; --i) {
-
-            if(_shots[i]._isOccupied && _shots[i]._isShoted) {
-                int up_index = i - 10;
-                if(up_index >= 0) {
-                    _shots[up_index]._isShoted = true;
-                }
-                int low_index = i + 10;
-                if(low_index < _shots.size()) {
-                    _shots[low_index]._isShoted = true;
-                }
-                continue;
-            }
-            if(!_shots[i]._isOccupied) {
-                _shots[i]._isShoted = true;
-                break;
-            }
-        }
-
-        // идём вправо и отмечаем верхние и нижние клетки для исключения из дальнейшей стрельбы
-        int right_index = index + 1;
-        for(int i = right_index; i <= last_index_in_row; ++i) {
-            if(_shots[i]._isOccupied && _shots[i]._isShoted) {
-                int up_index = i - 10;
-                if(up_index >= 0) {
-                    _shots[up_index]._isShoted = true;
-                }
-                int low_index = i + 10;
-                if(low_index < _shots.size()) {
-                    _shots[low_index]._isShoted = true;
-                }
-                continue;
-            }
-            if(!_shots[i]._isOccupied) {
-                _shots[i]._isShoted = true;
-                break;
-            }
-        }
-    }
-}
-
-std::optional<int> Bot::horizontalSearch() {
-    for(int i = 0; i < _shots.size(); ++i) {
-        if(_shots[i]._isShoted == true
-            && _shots[i]._isOccupied == true) {
-            int column = i%10;
-            // перебор клеток вправо от обнаруженной клетки
-            for(int j = column + 1; j < column + 5 && j < _model.getColumns(); ++j) {
-                int index = (i/10) * 10 + j;
-                if(index >= _shots.size()) {
-                    return {};
-                }
-                if(_shots[index]._isShoted == false) {
-                    _shots[index]._isShoted = true;
-                    return {index};
-                }
-                if(_shots[index]._isShoted == true
-                    && _shots[index]._isOccupied == true) {
-                    continue;
-                }
-                if(_shots[index]._isShoted == true
-                    && _shots[index]._isOccupied == false) {
-                    break;
-                }
-            }
-            // перебор клеток влево от обнаруженной ячейки
-            for(int j = column - 1; j >= 0; --j) {
-                int index = (i/10) * 10 + j;
-                if(index >= _shots.size() || index < 0) {
-                    return {};
-                }
-                if(_shots[index]._isShoted == false) {
-                    _shots[index]._isShoted = true;
-                    return {index};
-                }
-                if(_shots[index]._isShoted == true
-                    && _shots[index]._isOccupied == true) {
-                    continue;
-                }
-                if(_shots[index]._isShoted == true
-                    && _shots[index]._isOccupied == false) {
-                    break;
-                }
-            }
-        }
-    }
-
-    return {};
-}
-
-
-std::optional<int> Bot::verticalSearch() {
-    for(int i = 0; i < _shots.size(); ++i) {
-        if(_shots[i]._isShoted == true
-            && _shots[i]._isOccupied == true) {
-            int row = i/10;
-            int column = i%10;
-            // перебор клеток вниз от обнаруженной клетки
-            for(int j = row + 1; j < row + 4 && j < _model.getRows(); ++j) {
-                int index = j * 10 + column;
-                if(index >= _shots.size()) {
-                    return {};
-                }
-                if(_shots[index]._isShoted == false) {
-                    _shots[index]._isShoted = true;
-                    return {index};
-                }
-                if(_shots[index]._isShoted == true
-                    && _shots[index]._isOccupied == true) {
-                    continue;
-                }
-                if(_shots[index]._isShoted == true
-                    && _shots[index]._isOccupied == false) {
-                    break;
-                }
-            }
-            for(int j = row - 1; j >= 0; --j) {
-                int index = j * 10 + column;
-                if(index >= _shots.size() || index < 0) {
-                    return {};
-                }
-                if(_shots[index]._isShoted == false) {
-                    _shots[index]._isShoted = true;
-                    return {index};
-                }
-                if(_shots[index]._isShoted == true
-                    && _shots[index]._isOccupied == true) {
-                    continue;
-                }
-                if(_shots[index]._isShoted == true
-                    && _shots[index]._isOccupied == false) {
-                    break;
-                }
-            }
-        }
-
-    }
-    return {};
-}
-
-
-/**
- * @brief isAllIndexesTrue проверка на случай если все клетки уже обстреляны
- * @return
- */
-bool Bot::isAllIndexesTrue() {
-    return std::all_of(_shots.begin(), _shots.end(), [](Cell b) { return b._isShoted; });
 }

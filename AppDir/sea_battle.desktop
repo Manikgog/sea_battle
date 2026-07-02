@@ -1,0 +1,8 @@
+[Desktop Entry]
+Name=Sea Battle
+Comment=Sea Battle Game
+Exec=appsea_battle_combined
+Icon=sea_battle
+Terminal=true
+Type=Application
+Categories=Game;
